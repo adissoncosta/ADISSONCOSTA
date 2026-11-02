@@ -6,7 +6,7 @@ Uso:  python3 scripts/fetch_photos.py            (baixa só as que faltam)
       python3 scripts/fetch_photos.py --force    (baixa todas de novo)
 Requer acesso a en.wikipedia.org, commons.wikimedia.org e upload.wikimedia.org.
 """
-import io, json, re, sys, html, urllib.parse, urllib.request, pathlib
+import io, json, re, sys, time, html, urllib.error, urllib.parse, urllib.request, pathlib
 from PIL import Image
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
@@ -49,9 +49,21 @@ LANDMARKS = {
   "PMW": ("Palmas, Tocantins", "Palmas"), "LDB": ("Londrina", "Londrina"), "CPV": ("Campina Grande", "Campina Grande"),
 }
 
+def fetch(url, timeout=30):
+    """GET com novas tentativas quando a Wikimedia limita a taxa (HTTP 429/503)."""
+    for attempt in range(6):
+        try:
+            with urllib.request.urlopen(urllib.request.Request(url, headers=UA), timeout=timeout) as r:
+                return r.read()
+        except urllib.error.HTTPError as e:
+            if e.code not in (429, 503) or attempt == 5:
+                raise
+            wait = int(e.headers.get("Retry-After") or 0) or 10 * 2 ** attempt
+            wait = min(wait, 120)
+            print(f"  limite de taxa ({e.code}), aguardando {wait}s", flush=True); time.sleep(wait)
+
 def get_json(url):
-    with urllib.request.urlopen(urllib.request.Request(url, headers=UA), timeout=30) as r:
-        return json.load(r)
+    return json.loads(fetch(url))
 
 def strip_html(s):
     return html.unescape(re.sub(r"<[^>]+>", "", s or "")).strip()
@@ -83,17 +95,20 @@ def main(force=False):
             if not ii.get("thumburl"):
                 print(f"{k}: arquivo {fname} fora do Commons"); continue
             meta = ii.get("extmetadata", {})
-            with urllib.request.urlopen(urllib.request.Request(ii["thumburl"], headers=UA), timeout=60) as r:
-                im = Image.open(io.BytesIO(r.read())).convert("RGB")
-            im.thumbnail((900, 900))
-            im.save(IMG / f"{k}.jpg", "JPEG", quality=74, optimize=True, progressive=True)
+            out = IMG / f"{k}.jpg"
+            if force or not out.exists():  # imagem já baixada numa execução interrompida: só falta o crédito
+                im = Image.open(io.BytesIO(fetch(ii["thumburl"], timeout=60))).convert("RGB")
+                im.thumbnail((900, 900))
+                im.save(out, "JPEG", quality=74, optimize=True, progressive=True)
+                time.sleep(1.5)
             manifest[k] = {
                 "n": todo[k][1],
                 "a": strip_html(meta.get("Artist", {}).get("value")) or "Autor desconhecido",
                 "l": strip_html(meta.get("LicenseShortName", {}).get("value")) or "ver página",
                 "u": ii.get("descriptionurl", ""),
             }
-            print(f"{k}: ok ({fname})")
+            manifest_path.write_text(json.dumps(manifest, ensure_ascii=False, indent=1, sort_keys=True))
+            print(f"{k}: ok ({fname})", flush=True)
     manifest_path.write_text(json.dumps(manifest, ensure_ascii=False, indent=1, sort_keys=True))
     # Copia o manifesto para dentro do index.html (a página não pode carregar scripts externos)
     page = (ROOT / "index.html").read_text()
