@@ -244,6 +244,26 @@ figure.dest figcaption span{font-size:.82rem;opacity:.9}
 .sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
 @media (max-width:520px){.tgrid{grid-template-columns:1fr}.tswap{justify-self:end;transform:rotate(90deg)}}
 
+/* Botão de busca e quadro do menor preço */
+.pass-go{padding:0 20px 22px;display:flex;justify-content:flex-end}
+.search-btn{font:inherit;font-weight:700;font-size:1.05rem;display:inline-flex;align-items:center;justify-content:center;gap:10px;min-height:52px;padding:0 28px;border:0;border-radius:99px;background:var(--sign);color:var(--sign-ink);cursor:pointer;box-shadow:0 6px 18px rgba(242,183,5,.25)}
+.search-btn svg{width:20px;height:20px}
+.search-btn:hover{filter:brightness(1.05)}
+.search-btn:disabled{opacity:.7;cursor:progress}
+@media (max-width:520px){.pass-go{padding:0 16px 18px}.search-btn{width:100%}}
+.best-box{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:6px 18px;align-items:center;margin:0 0 16px;padding:18px 20px;border-radius:16px;background:var(--paper);border:2px solid var(--good)}
+.best-box.wait,.best-box.none{border-color:var(--line);border-style:dashed}
+.best-box .lbl{grid-column:1/-1;font-size:.75rem;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);font-weight:600}
+.best-box .main{display:flex;align-items:center;gap:12px;min-width:0}
+.best-box .main img{width:44px;height:44px;border-radius:12px;flex:none}
+.best-box .pr{font-family:var(--display);font-weight:700;font-size:clamp(2rem,9vw,2.8rem);line-height:1;font-variant-numeric:tabular-nums}
+.best-box .who{font-weight:600}
+.best-box .meta{grid-column:1/-1;font-size:.88rem;color:var(--muted)}
+.best-box .buy{font:inherit;font-weight:700;text-decoration:none;background:var(--accent);color:var(--accent-ink);padding:12px 20px;border-radius:99px;white-space:nowrap}
+.best-box .spin{width:22px;height:22px;border-radius:50%;border:3px solid var(--line);border-top-color:var(--accent);animation:spin .8s linear infinite;flex:none}
+@keyframes spin{to{transform:rotate(360deg)}}
+@media (prefers-reduced-motion:reduce){.best-box .spin{animation:none}}
+@media (max-width:520px){.best-box{grid-template-columns:1fr}.best-box .buy{text-align:center}}
 /* Promoções ao vivo */
 .live-banner{display:flex;flex-wrap:wrap;align-items:center;gap:8px 14px;margin:0 0 14px;padding:14px 16px;border-radius:16px;background:linear-gradient(120deg,#1F5FA8,#2C7BD6);color:#fff}
 .live-banner .dot{display:inline-flex;align-items:center;gap:6px;font-size:.72rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;background:rgba(255,255,255,.18);padding:4px 10px;border-radius:99px}
@@ -413,12 +433,14 @@ footer{color:var(--muted);font-size:.8rem;max-width:68ch}
         <select id="cabin"><option value="economy">Econômica</option><option value="premium">Premium Economy</option><option value="business">Executiva</option><option value="first">Primeira</option></select></div>
     </div>
     <p class="err" id="err" hidden></p>
+    <div class="pass-go"><button type="button" class="search-btn" id="searchBtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>Buscar passagens</button></div>
   </section>
 
   <section class="results" aria-live="polite">
     <figure class="dest" id="dest" hidden></figure>
     <h2>Comprar direto na companhia</h2>
     <p class="summary" id="summary"></p>
+    <div class="best-box" id="bestBox" aria-live="polite" hidden></div>
     <button type="button" class="savefav" id="saveFav" aria-pressed="false">☆ Salvar nas minhas rotas</button>
     <p class="sub">Cada botão abre o site oficial da companhia com trecho, datas, passageiros e cabine já preenchidos. É só escolher o voo e pagar.</p>
     <div class="live" id="live">
@@ -868,11 +890,11 @@ const saveLivePrices = () => { try { localStorage.setItem(LP_KEY, JSON.stringify
 const hhmm = t => { const d = new Date(t); return `${pad2(d.getHours())}:${pad2(d.getMinutes())}`; };
 // Preços reais pelo servidor (RADAR_API): menor preço de cada companhia para o trecho e as datas
 let apiTimer = null, apiKey = "";
-function apiPrices(s){
+function apiPrices(s, force = false){
   if(!window.RADAR_API || s.cabin !== "economy") return;
   const key = searchKey(s);
-  if(key === apiKey) return;
-  if(livePrices && livePrices.key === key && livePrices.src === "api" && Date.now() - livePrices.at < 30*60e3){ apiKey = key; return; }
+  if(key === apiKey && !force) return;
+  if(!force && livePrices && livePrices.key === key && livePrices.src === "api" && Date.now() - livePrices.at < 30*60e3){ apiKey = key; return; }
   apiKey = key; clearTimeout(apiTimer);
   const names = links(s).cash.map(c => c.name);
   livePrices = {key, at:Date.now(), src:"api", prices:{}, codes:[], status:Object.fromEntries(names.map(n => [n,"run"]))};
@@ -897,6 +919,44 @@ function apiPrices(s){
     render();
   }, 350);
 }
+// Quadro com o menor preço encontrado para a busca (aparece depois do botão "Buscar passagens"
+// ou quando há preços para o trecho)
+let bestAsked = false;
+function bestBox(s, cs, lp){
+  const box = $("bestBox");
+  const running = lp && Object.values(lp.status || {}).includes("run");
+  const top = cs.find(c => c.price);
+  const label = `${s.from} → ${s.to} · ${fmtBR(s.dep).slice(0,5)}${s.ret ? " a "+fmtBR(s.ret).slice(0,5) : " (só ida)"} · ${s.pax} adulto${s.pax>1?"s":""}`;
+  if(!bestAsked && !top){ box.hidden = true; return; }
+  box.hidden = false;
+  if(running && !top){
+    box.className = "best-box wait";
+    box.innerHTML = `<div class="lbl">${esc(label)}</div><div class="main"><span class="spin" aria-hidden="true"></span><span>Buscando o menor preço nas companhias…</span></div>`;
+    return;
+  }
+  if(!top){
+    box.className = "best-box none";
+    box.innerHTML = `<div class="lbl">${esc(label)}</div><div class="main"><span>${window.RADAR_API ? (s.cabin !== "economy" ? "A fonte de preços só tem classe econômica. Veja os valores direto nas companhias abaixo." : "Não há preço recente para este trecho nessas datas. Toque numa companhia abaixo para ver o valor no site dela.") : "Para ver o preço aqui, abra o site publicado (com o servidor de preços) ou o app Claude para computador. Abaixo, cada companhia abre com a busca preenchida."}</span></div>`;
+    return;
+  }
+  const p = top.price, code = top.id || "";
+  const when = p.from === "api" ? (p.scope === "date" ? "preço para essas datas" : `melhor preço de ${MES[+p.dep.slice(5,7)-1]}/${p.dep.slice(2,4)}, ida ${fmtBR(p.dep).slice(0,5)}`) : "menor valor na página da companhia";
+  box.className = "best-box";
+  box.innerHTML = `<div class="lbl">Menor preço encontrado · ${esc(label)}</div>
+    <div class="main">${LOGOS[code] ? `<img src="img/logo-${code}.png" alt="">` : ""}<div><div class="pr">${brlExact(p.v)}</div><div class="who" translate="no">${esc(top.name)}</div></div></div>
+    <a class="buy" href="${esc(top.url)}" target="_blank" rel="noopener">${top.buy ? "Comprar na "+esc(top.name) : "Abrir "+esc(top.name)} →</a>
+    <div class="meta">${esc(when)}${p.stops != null ? " · "+stopsTxt(p.stops) : ""} · por adulto${lp && lp.at ? " · consultado às "+hhmm(lp.at) : ""}. Outras companhias logo abaixo.</div>`;
+}
+$("searchBtn").onclick = () => {
+  render();
+  if(!$("err").hidden){ $("err").scrollIntoView({behavior:"smooth", block:"center"}); return; }
+  const s = state();
+  bestAsked = true;
+  if(window.RADAR_API) apiPrices(s, true);
+  else if(!$("liveBtn").hidden && !liveRun) liveSearch();
+  render();
+  document.querySelector(".results").scrollIntoView({behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth", block:"start"});
+};
 // Ordena os cartões em reais: com preço do menor para o maior, depois os sem preço na ordem original
 function cashCards(s, list){
   const lp = livePrices && livePrices.key === searchKey(s) ? livePrices : null;
@@ -941,6 +1001,7 @@ function render(){
   $("summary").textContent = `${s.from} → ${s.to} · ${fmtBR(s.dep)}${s.ret?" a "+fmtBR(s.ret):" (só ida)"} · ${s.pax} adulto${s.pax>1?"s":""} · ${CABIN_PT[s.cabin]}`;
   const {cs, lp} = cashCards(s, L.cash);
   $("cash").innerHTML = cs.map(card).join("");
+  bestBox(s, cs, lp);
   $("cashH").textContent = lp && Object.keys(lp.prices).length ? `Pagando em reais · ${lp.src === "api" ? "menores preços encontrados" : "preços dos sites"} às ${hhmm(lp.at)}, do menor para o maior` : "Pagando em reais";
   apiPrices(s);
   $("miles").innerHTML = L.miles.map(card).join("");

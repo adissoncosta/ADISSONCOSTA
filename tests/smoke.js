@@ -198,6 +198,9 @@ const assert = (c,m) => { console.log((c?'PASS ':'FAIL ')+m); if(!c) process.exi
   const ex2 = await px.$$eval('#exList .fav .info b', a => a.slice(0,2).map(x => x.textContent.trim()));
   assert(/389/.test(ex2[0]) && (await px.inputValue('#exFrom')).includes('CWB'), 'origin and prices remembered after reload: '+ex2);
   assert(errsX.length===0, 'no page errors in explore '+errsX.join(';'));
+  // botão de busca sem servidor de preços
+  await p.click('#searchBtn');
+  assert(!(await p.isHidden('#bestBox')) && /Para ver o preço aqui/.test(await p.textContent('#bestBox')), 'search button without price server explains where prices appear');
   // ---- ajuste automático à tela: do celular de 320px ao monitor ----
   for(const [w,h] of [[320,640],[375,812],[414,896],[768,1024],[1366,768],[1920,1080]]){
     const cr = await b.newContext({viewport:{width:w,height:h}}); await cr.addInitScript(fixClock('2026-11-02T12:00:00'));
@@ -265,6 +268,19 @@ const assert = (c,m) => { console.log((c?'PASS ':'FAIL ')+m); if(!c) process.exi
   assert(q1 && q1.ret==='2027-01-08' && q1.cabin==='economy', 'asks the server for the chosen route and dates');
   assert(/menores preços encontrados/.test(await pa.textContent('#cashH')), 'heading says prices found');
   assert(await pa.isHidden('#liveOff'), 'no "open in the Claude app" note when the site has prices');
+  // botão "Buscar passagens": busca de novo e mostra o menor preço em destaque
+  const callsBefore = apiCalls.filter(q => q.from==='CWB' && q.to==='GIG' && q.dep==='2027-01-01').length;
+  await pa.click('#searchBtn');
+  await pa.waitForFunction(() => /R\$/.test(document.getElementById('bestBox').textContent) && !document.querySelector('#bestBox .spin'), null, {timeout:8000});
+  const bb = await pa.evaluate(() => ({t: document.getElementById('bestBox').textContent.replace(/\s+/g,' ').trim(), href: (document.querySelector('#bestBox a.buy')||{}).href||'', top: document.querySelector('.results').getBoundingClientRect().top}));
+  const callsAfter = apiCalls.filter(q => q.from==='CWB' && q.to==='GIG' && q.dep==='2027-01-01').length;
+  assert(/Menor preço encontrado/.test(bb.t) && /R\$\s350/.test(bb.t) && /Avianca/.test(bb.t) && /1 parada/.test(bb.t) && /avianca/.test(bb.href), 'search button shows the cheapest fare with airline and buy link: '+bb.t.slice(0,160));
+  assert(callsAfter > callsBefore, 'search button asks the server again');
+  assert(bb.top < 200, 'search button scrolls to the results');
+  await pa.fill('#to','FOR'); await pa.dispatchEvent('#to','input'); await pa.click('#searchBtn');
+  await pa.waitForFunction(() => !document.querySelector('#bestBox .spin') && /preço recente/.test(document.getElementById('bestBox').textContent), null, {timeout:8000}).catch(()=>{});
+  assert(/Não há preço recente/.test(await pa.textContent('#bestBox')), 'route without fares explains it');
+  await pa.fill('#to','GIG'); await pa.dispatchEvent('#to','input');
   // promoções ao vivo (Azul e Melhores Destinos)
   await pa.waitForFunction(() => !document.getElementById('dealsLive').hidden, null, {timeout:8000}).catch(()=>{});
   const live = await pa.evaluate(() => ({banner: document.getElementById('dealsLive').textContent.replace(/\s+/g,' ').trim(), stamp: document.getElementById('dealsStamp').textContent,
