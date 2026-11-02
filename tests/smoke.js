@@ -230,15 +230,16 @@ const assert = (c,m) => { console.log((c?'PASS ':'FAIL ')+m); if(!c) process.exi
   } else assert(man && man.name === 'Radar de Passagens' && man.icons.length >= 2, 'manifest served online: '+JSON.stringify(man).slice(0,80));
   // ---- preços reais pelo servidor (RADAR_API), com a API simulada ----
   const ctxApi = await b.newContext({viewport:{width:375,height:760}});
-  await ctxApi.addInitScript(fixClock('2026-11-02T12:00:00'));
+  await ctxApi.addInitScript(fixClock('2026-11-02T22:00:00Z'));
   await ctxApi.addInitScript(() => { window.RADAR_API = 'https://precos.test/'; });
   const apiCalls = [];
-  await ctxApi.route('https://precos.test/**', route => {
+  const ctxApiRoute = route => {
     const q = Object.fromEntries(new URL(route.request().url()).searchParams); apiCalls.push(q);
     const H = {'Access-Control-Allow-Origin':'*','Content-Type':'application/json'};
     if(q.to === 'FOR') return route.fulfill({status:502, headers:H, body:JSON.stringify({error:'upstream', message:'Travelpayouts respondeu 500'})});
     if('ofertas' in q) return route.fulfill({status:200, headers:H, body:JSON.stringify({at:'2026-11-02T11:55:00Z',
-      campaigns:[{name:'Anoiteceu Azul', url:'https://passagens.voeazul.com.br/pt/anoiteceu', price:'R$ 219,90', points:'8.000 pontos', cond:'No cartão Azul Itau. Consulte condições.', when:'É só essa noite, das 18h às 23h59!'}],
+      campaigns:[{name:'Anoiteceu Azul', url:'https://passagens.voeazul.com.br/pt/anoiteceu', price:'R$ 219,90', points:'8.000 pontos', cond:'No cartão Azul Itau. Consulte condições.', when:'É só essa noite, das 18h às 23h59!',
+        fares: Array.from({length:12}, (_,i) => ({from: i < 8 ? 'GRU' : 'CNF', to: ['GIG','CWB','POA','FLN','REC','SSA','BSB','FOR','CGH','BSB','POA','REC'][i], fromName: i < 8 ? 'São Paulo' : 'Belo Horizonte', toName:'x', price: 214.53 + i*10, dep:'2027-03-04', ret:'', oneWay:true, seen:'3 horas atrás'}))}],
       cash:[{source:'azul', campaign:'Anoiteceu Azul', url:'https://passagens.voeazul.com.br/pt/anoiteceu', from:'GRU', to:'GIG', fromName:'São Paulo', toName:'Rio de Janeiro', price:214.53, dep:'2027-03-04', ret:'', oneWay:true, seen:'3 horas atrás', airline:'AD'},
             {source:'azul', campaign:'Anoiteceu Azul', url:'https://passagens.voeazul.com.br/pt/anoiteceu', from:'MCP', to:'BEL', fromName:'Macapá', toName:'Belém', price:240.92, dep:'2027-04-29', ret:'', oneWay:true, seen:'1 dia atrás', airline:'AD'},
             {source:'md', title:'Santa Catarina bem barato! Passagens para Florianópolis a partir de R$ 278 ida e volta', url:'https://www.melhoresdestinos.com.br/promocao/sc', pub:'Mon, 02 Nov 2026 09:00:00 +0000', from:'POA', to:'FLN', price:278, roundTrip:true, airline:'AD'},
@@ -254,7 +255,8 @@ const assert = (c,m) => { console.log((c?'PASS ':'FAIL ')+m); if(!c) process.exi
     const depAt = q.to === 'REC' && q.dep ? new Date(Date.parse(q.dep+'T12:00:00Z') + 3*864e5).toISOString().slice(0,10) : (q.dep||'');
     const airlines = Object.fromEntries(Object.entries(P[q.to]||{}).map(([k,v]) => [k, {departure_at:depAt+'T08:00:00-03:00', ...v}]));
     return route.fulfill({status:200, headers:H, body:JSON.stringify({scope: q.to==='REC' ? 'month' : 'date', airlines})});
-  });
+  };
+  await ctxApi.route('https://precos.test/**', ctxApiRoute);
   const pa = await ctxApi.newPage(); const errsA = []; pa.on('pageerror', e => errsA.push(e.message));
   await pa.goto(url); await pa.waitForTimeout(300);
   await pa.fill('#from','CWB'); await pa.dispatchEvent('#from','input');
@@ -300,6 +302,15 @@ const assert = (c,m) => { console.log((c?'PASS ':'FAIL ')+m); if(!c) process.exi
   const azBuy = await pa.$('#deals-nat .deal a[data-buy]'); await azBuy.dispatchEvent('pointerdown');
   const azHref = await azBuy.getAttribute('href');
   assert(/voeazul.*c\[0\]\.ds=GRU.*c\[0\]\.as=GIG/.test(azHref) && azHref.includes('03%2F04%2F2027') || /voeazul/.test(azHref) && /2027/.test(azHref), 'Azul deal buy button opens Azul on the deal date: '+azHref.slice(0,160));
+  // seção temporária da campanha ao vivo (no horário: 19h em Brasília)
+  const camp = await pa.evaluate(() => ({vis: !document.getElementById('camp').hidden, h: (document.querySelector('#camp h2')||{}).textContent||'', clock: (document.querySelector('#camp .clock')||{}).textContent||'', rows: document.querySelectorAll('#camp .camp-list li').length, first: (document.querySelector('#camp .camp-list li')||{}).textContent||'', href: (document.querySelector('#camp .camp-list a')||{}).href||'', more: (document.getElementById('campAll')||{}).textContent||''}));
+  assert(camp.vis && /Anoiteceu Azul: os melhores preços da Azul/.test(camp.h) && /termina em 4h/.test(camp.clock), 'live campaign section shown during its hours, with countdown: '+camp.h+' / '+camp.clock);
+  assert(camp.rows === 9 && /São Paulo → Rio de Janeiro/.test(camp.first) && /R\$\s214,53/.test(camp.first) && /voeazul.*c\[0\]\.ds=GRU.*c\[0\]\.as=GIG/.test(camp.href) && /Ver todos \(12\)/.test(camp.more), 'best campaign prices listed cheapest first, with Azul buy link: '+camp.first.replace(/\s+/g,' ').slice(0,90));
+  await pa.click('#camp [data-o="CNF"]');
+  const campF = await pa.$$eval('#camp .camp-list .rt', a => a.map(x => x.textContent));
+  assert(campF.length === 4 && campF.every(t => /^Belo Horizonte/.test(t)), 'filter by departure city: '+campF.join(' | '));
+  await pa.click('#camp [data-o=""]'); await pa.click('#campAll');
+  assert((await pa.$$('#camp .camp-list li')).length === 12, 'see all campaign fares');
   // Para onde vamos viajar? pelo servidor
   await pa.evaluate(() => scrollTo(0,0));
   await pa.fill('#exFrom','curitiba'); await pa.dispatchEvent('#exFrom','input'); await pa.keyboard.press('Enter');
@@ -343,5 +354,14 @@ const assert = (c,m) => { console.log((c?'PASS ':'FAIL ')+m); if(!c) process.exi
   const tMan = await pa.evaluate(() => ({v: document.getElementById('tp-2026-12').value, note: document.querySelector('.mo-s[data-s="2026-12"]').textContent, auto: document.getElementById('tp-2027-09').value}));
   assert(tMan.v === '1.500' && /anotado por você/.test(tMan.note) && tMan.auto === '2.990', 'refreshing keeps what you typed: '+JSON.stringify(tMan));
   assert(errsA.length===0, 'no page errors with price server '+errsA.join(';'));
+  // fora do horário da campanha (9h em Brasília): a seção e a faixa somem
+  const ctxOff = await b.newContext({viewport:{width:375,height:760}});
+  await ctxOff.addInitScript(fixClock('2026-11-02T12:00:00Z'));
+  await ctxOff.addInitScript(() => { window.RADAR_API = 'https://precos.test/'; });
+  await ctxOff.route('https://precos.test/**', route => ctxApiRoute(route));
+  const po = await ctxOff.newPage(); await po.goto(url);
+  await po.waitForFunction(() => /Atualizado/.test(document.getElementById('dealsStamp').textContent), null, {timeout:8000}).catch(()=>{});
+  assert(await po.isHidden('#camp') && await po.isHidden('#dealsLive') && /Atualizado/.test(await po.textContent('#dealsStamp')), 'outside campaign hours the temporary section and banner are hidden (deals still live)');
+  await ctxOff.close();
   await b.close();
 })();

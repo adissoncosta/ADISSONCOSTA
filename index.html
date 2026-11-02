@@ -244,6 +244,30 @@ figure.dest figcaption span{font-size:.82rem;opacity:.9}
 .sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
 @media (max-width:520px){.tgrid{grid-template-columns:1fr}.tswap{justify-self:end;transform:rotate(90deg)}}
 
+/* Seção temporária: promoção ao vivo com horário */
+.camp{background:linear-gradient(160deg,#16335E,#1F5FA8 70%);color:#fff;border-radius:22px;padding:20px;display:grid;gap:14px;min-width:0}
+.camp-top{display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px}
+.camp .dot{display:inline-flex;align-items:center;gap:6px;font-size:.72rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;background:rgba(255,255,255,.18);padding:4px 10px;border-radius:99px}
+.camp .dot::before{content:"";width:8px;height:8px;border-radius:50%;background:#FF5A5A;animation:pulse 1.6s infinite}
+@media (prefers-reduced-motion:reduce){.camp .dot::before{animation:none}}
+.camp .clock{font-family:var(--mono);font-weight:600;font-size:.85rem;background:#F2B705;color:#13263B;padding:4px 10px;border-radius:99px}
+.camp h2{margin:0;font-family:var(--body);font-weight:700;font-size:clamp(1.5rem,6vw,2.1rem);line-height:1.1;letter-spacing:-.01em}
+.camp .lead{margin:0;font-size:.92rem;opacity:.92}
+.camp .chips-o{display:flex;gap:6px;overflow-x:auto;padding-bottom:2px;scrollbar-width:thin}
+.camp .chips-o button{font:inherit;font-size:.85rem;white-space:nowrap;padding:8px 14px;border-radius:99px;border:1px solid rgba(255,255,255,.35);background:transparent;color:#fff;cursor:pointer;min-height:40px}
+.camp .chips-o button[aria-pressed="true"]{background:#fff;color:#13263B;border-color:#fff;font-weight:600}
+.camp-list{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,250px),1fr));gap:10px;margin:0;padding:0;list-style:none}
+.camp-list li{background:var(--paper);color:var(--ink);border-radius:14px;padding:12px 14px;display:grid;grid-template-columns:minmax(0,1fr) auto;gap:2px 10px;align-items:center}
+.camp-list .rt{font-weight:600;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.camp-list .dt{grid-column:1;font-size:.8rem;color:var(--muted)}
+.camp-list .pr{grid-row:1/3;grid-column:2;text-align:right;font-family:var(--display);font-weight:700;font-size:1.5rem;line-height:1;font-variant-numeric:tabular-nums}
+.camp-list .pr small{display:block;font-family:var(--body);font-size:.68rem;font-weight:500;color:var(--muted)}
+.camp-list a{grid-column:1/-1;margin-top:6px;text-align:center;font-weight:700;font-size:.88rem;text-decoration:none;background:var(--accent);color:var(--accent-ink);padding:9px 12px;border-radius:99px}
+.camp-list li.top{outline:2px solid #F2B705}
+.camp-foot{display:flex;flex-wrap:wrap;gap:8px 14px;align-items:center;justify-content:space-between;font-size:.8rem;opacity:.92}
+.camp-foot button,.camp-foot a{font:inherit;font-weight:600;font-size:.88rem;color:#13263B;background:#F2B705;border:0;border-radius:99px;padding:10px 16px;cursor:pointer;text-decoration:none}
+.camp-foot a.sec{background:transparent;color:#fff;border:1px solid rgba(255,255,255,.5)}
+.live-banner .go-camp{background:transparent;color:#fff;border:1px solid rgba(255,255,255,.6)}
 /* Botão de busca e quadro do menor preço */
 .pass-go{padding:0 20px 22px;display:flex;justify-content:flex-end}
 .search-btn{font:inherit;font-weight:700;font-size:1.05rem;display:inline-flex;align-items:center;justify-content:center;gap:10px;min-height:52px;padding:0 28px;border:0;border-radius:99px;background:var(--sign);color:var(--sign-ink);cursor:pointer;box-shadow:0 6px 18px rgba(242,183,5,.25)}
@@ -363,6 +387,8 @@ footer{color:var(--muted);font-size:.8rem;max-width:68ch}
     <h1>Radar de Passagens</h1>
     <p>Digite a cidade de origem e de destino, escolha as datas e compre direto no site da companhia aérea, com a busca já preenchida. Também dá para emitir com milhas e comparar com a calculadora.</p>
   </header>
+
+  <section class="camp" id="camp" aria-labelledby="campTitle" hidden></section>
 
   <section class="deals">
     <div class="deals-head">
@@ -1378,11 +1404,64 @@ function liveDeal(o){
     info:[`Melhores Destinos${pub ? " · publicada " + agoTxt(pub) : ""}`], badge:nat ? "Nacional" : "Internacional", fill:[o.from || (o.to === "GRU" || o.to === "CGH" ? "GIG" : "GRU"), o.to, "economy"], ...air,
     age: pub ? agoTxt(pub) : "", src:o.url, live:true, n:o.price, ...(o.airline ? {} : {srcName:"Melhores Destinos"})};
 }
-function liveBanner(cs){
-  const c = (cs || []).find(c => c.price);
-  $("dealsLive").hidden = !c;
-  if(c) $("dealsLive").innerHTML = `<span class="dot">Ao vivo</span><div class="txt"><b>${esc(c.name)}: passagens a partir de ${esc(c.price)}${c.points ? " ou " + esc(c.points) : ""}</b><small>${esc([c.cond, c.when].filter(Boolean).join(" "))}</small></div><a href="${esc(c.url)}" target="_blank" rel="noopener">Ver na Azul →</a>`;
+// ---- Promoção ao vivo com horário (ex.: "É só essa noite, das 18h às 23h59!"), no horário de Brasília ----
+let liveCamps = [], campOrigin = "", campAll = false;
+const brNow = () => {
+  // hora de Brasília (UTC-3) a partir do relógio do aparelho
+  const d = new Date(Date.now() - 3*3600e3);
+  return {ymd: d.toISOString().slice(0,10), min: d.getUTCHours()*60 + d.getUTCMinutes()};
+};
+// Janela da campanha: {start,end} em minutos do dia de hoje (Brasília), {until:"AAAA-MM-DD"}, ou null se não tem prazo
+function campWindow(c){
+  const w = (c && c.when || "").toLowerCase();
+  const h = w.match(/das (\d{1,2})h(\d{2})? (?:às|as|até) (\d{1,2})h(\d{2})?/);
+  if(h) return {start: +h[1]*60 + +(h[2]||0), end: +h[3]*60 + +(h[4]||0)};
+  const u = w.match(/até (?:o dia )?(\d{1,2})\/(\d{1,2})/);
+  if(u){ const n = brNow(), y = +n.ymd.slice(0,4); return {until: `${y}-${pad2(+u[2])}-${pad2(+u[1])}`}; }
+  if(/só hoje|essa noite|hoje|últimas horas/.test(w)) return {start: 0, end: 23*60+59};
+  return null;
 }
+// minutos que faltam (>0 = no ar agora), ou null se a campanha não tem prazo
+function campLeft(c){
+  const w = campWindow(c); if(!w) return null;
+  const n = brNow();
+  if(w.until) return n.ymd <= w.until ? (Date.parse(w.until+"T23:59:00-03:00") - Date.now()) / 60000 : -1;
+  return n.min >= w.start && n.min <= w.end ? w.end - n.min + 1 : -1;
+}
+const leftTxt = m0 => { const m = Math.max(1, Math.floor(m0 - 1)); return m >= 1440 ? `termina em ${Math.ceil(m/1440)} dias` : m >= 60 ? `termina em ${Math.floor(m/60)}h ${pad2(m%60)}min` : `termina em ${m} min`; };
+const activeCamp = () => liveCamps.find(c => c.price && campLeft(c) > 0);
+function liveBanner(cs){
+  if(cs) liveCamps = cs;
+  const c = liveCamps.find(c => c.price);
+  const left = c ? campLeft(c) : -1;
+  $("dealsLive").hidden = !c || (left !== null && left <= 0);
+  if(!$("dealsLive").hidden) $("dealsLive").innerHTML = `<span class="dot">Ao vivo</span><div class="txt"><b>${esc(c.name)}: passagens a partir de ${esc(c.price)}${c.points ? " ou " + esc(c.points) : ""}</b><small>${esc([c.cond, c.when].filter(Boolean).join(" "))}</small></div>${left > 0 && c.fares && c.fares.length ? `<a href="#camp" class="go-camp">Ver melhores preços ↑</a>` : ""}<a href="${esc(c.url)}" target="_blank" rel="noopener">Ver na Azul →</a>`;
+  renderCamp();
+}
+function renderCamp(){
+  const box = $("camp"), c = activeCamp();
+  if(!c || !c.fares || !c.fares.length){ box.hidden = true; box.innerHTML = ""; return; }
+  box.hidden = false;
+  const origins = [...new Set(c.fares.map(f => f.from))];
+  const name = code => (AIRPORTS[code] || "").split(" · ")[0] || code;
+  if(campOrigin && !origins.includes(campOrigin)) campOrigin = "";
+  const list = c.fares.filter(f => !campOrigin || f.from === campOrigin);
+  const shown = campAll ? list : list.slice(0, 9);
+  c.fares.forEach(f => { if(f.fromName && !AIRPORTS[f.from]) AIRPORTS[f.from] = f.fromName; if(f.toName && !AIRPORTS[f.to]) AIRPORTS[f.to] = f.toName; });
+  const buy = f => AIRLINE.AD.url({from:f.from, to:f.to, dep:f.dep, ret:f.oneWay ? "" : f.ret, pax:1, cabin:"economy"});
+  box.innerHTML = `<div class="camp-top"><span class="dot">Ao vivo agora</span><span class="clock">${leftTxt(campLeft(c))}</span></div>
+    <h2 id="campTitle">${esc(c.name)}: os melhores preços da Azul</h2>
+    <p class="lead">Passagens a partir de <b>${esc(c.price)}</b>${c.points ? " ou <b>"+esc(c.points)+"</b>" : ""}. ${esc([c.cond, c.when].filter(Boolean).join(" "))}</p>
+    ${origins.length > 1 ? `<div class="chips-o" role="group" aria-label="Saindo de"><button type="button" data-o="" aria-pressed="${!campOrigin}">Todas as saídas</button>${origins.map(o => `<button type="button" data-o="${o}" aria-pressed="${campOrigin===o}">${esc(name(o))}</button>`).join("")}</div>` : ""}
+    <ul class="camp-list">${shown.map((f,i) => `<li class="${i===0?"top":""}"><span class="rt" translate="no">${esc(name(f.from))} → ${esc(name(f.to))}</span><span class="dt">ida ${fmtBR(f.dep)}${f.ret && !f.oneWay ? " · volta "+fmtBR(f.ret).slice(0,5) : ""} · ${f.oneWay ? "só ida" : "ida e volta"}${f.seen ? " · visto há "+esc(f.seen.replace(/\s*atrás$/,"")) : ""}</span><span class="pr">${brlExact(f.price)}<small>por adulto</small></span><a href="${esc(buy(f))}" target="_blank" rel="noopener">Comprar na Azul →</a></li>`).join("")}</ul>
+    <div class="camp-foot"><span>${list.length} ${list.length===1?"trecho":"trechos"} com preço na página oficial da Azul, do menor para o maior. Confirme o valor no site antes de pagar.</span><span>${list.length > 9 ? `<button type="button" id="campAll">${campAll ? "Mostrar menos" : `Ver todos (${list.length})`}</button> ` : ""}<a class="sec" href="${esc(c.url)}" target="_blank" rel="noopener">Abrir a campanha →</a></span></div>`;
+}
+$("camp").addEventListener("click", e => {
+  const o = e.target.closest("[data-o]"); if(o){ campOrigin = o.dataset.o; campAll = false; renderCamp(); return; }
+  if(e.target.closest("#campAll")){ campAll = !campAll; renderCamp(); }
+});
+// contagem regressiva; quando a campanha termina, a seção e a faixa somem
+setInterval(() => { if(liveCamps.length) liveBanner(); }, 30e3);
 async function loadLiveDeals(){
   if(!window.RADAR_API || liveDealsRun) return;
   liveDealsRun = true;

@@ -69,6 +69,7 @@ const off = await offers(env, async (u) => {
   return resp(q.destination === "FLN" ? [{ airline: "G3", price: 300 }, { airline: "AD", price: 280 }] : []);
 }, new Date("2026-11-02T12:00:00Z"));
 const offAz = off.cash.filter(c => c.source === "azul"), offMd = off.cash.filter(c => c.source === "md");
+assert(off.campaigns[0].fares.length === 2 && off.campaigns[0].fares[0].from === "GRU" && off.campaigns[0].fares[0].price === 214.53 && off.campaigns[0].fares[1].fromName === "Macapá", "campaign carries its full fare list, cheapest first");
 assert(off.campaigns.length === 1 && offAz.length === 2 && offAz[0].from === "GRU" && offAz[0].to === "GIG" && offAz[0].airline === "AD", "offers: Azul fares (city codes -> main airport)");
 assert(offMd.length === 2 && offMd.find(c => c.to === "FLN").airline === "AD" && calls[0].origin === "POA" && calls[0].departure_at === "2026-12", "offers: RSS deals get the cheapest airline from fares: " + JSON.stringify(offMd.map(c => c.to + ":" + c.airline)));
 const realFetch2 = globalThis.fetch;

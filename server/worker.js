@@ -111,7 +111,7 @@ export async function months(env, p, now = new Date(), fetchImpl = fetch) {
 const UA = "Mozilla/5.0 (compatible; RadarDePassagens/1.0; +https://adissoncosta.github.io/ADISSONCOSTA/)";
 export const AZUL_PAGES = ["anoiteceu"];
 const OFFERS_SECONDS = 600;
-const OFFERS_VERSION = 2;  // aumente ao mudar o formato ou a leitura das ofertas
+const OFFERS_VERSION = 3;  // aumente ao mudar o formato ou a leitura das ofertas
 // Nome da cidade (como aparece nos títulos) -> aeroporto principal
 const CITY_CODE = {
   "são paulo": "GRU", "rio de janeiro": "GIG", "rio": "GIG", "brasília": "BSB", "belo horizonte": "CNF", "salvador": "SSA", "recife": "REC",
@@ -195,7 +195,9 @@ export async function offers(env, fetchImpl = fetch, now = new Date()) {
   const cash = [], campaigns = [];
   // Azul: os mais baratos, um por destino, para variar as fotos
   for (const page of azul.filter(Boolean)) {
-    if (page.campaign.price || page.fares.length) campaigns.push(page.campaign);
+    // lista completa da campanha (melhores preços da página), para a seção temporária do site
+    if (page.campaign.price || page.fares.length) campaigns.push({ ...page.campaign, fares: page.fares.slice().sort((a, b) => a.price - b.price).slice(0, 60)
+      .map(f => ({ from: CITY_MAIN[f.from] || f.from, to: CITY_MAIN[f.to] || f.to, fromName: f.fromName, toName: f.toName, price: f.price, dep: f.dep, ret: f.ret, oneWay: f.trip === "Só ida", seen: f.seen })) });
     const byDest = new Set();
     for (const f of page.fares.sort((a, b) => a.price - b.price)) {
       const to = CITY_MAIN[f.to] || f.to, city = CITY[to] || to;  // Congonhas e Guarulhos contam como São Paulo
