@@ -646,10 +646,18 @@ const ALIASES = {
   JNB:"johannesburg africa do sul", NRT:"tokyo japao", HND:"tokyo japao", ICN:"seoul coreia do sul", BKK:"tailandia"
 };
 const AP_INDEX = Object.entries(AIRPORTS).map(([c,n]) => ({c, n, h:" "+norm(n+" "+(ALIASES[c]||""))+" "}));
+// Cidades com mais de um aeroporto, pelo código IATA da cidade (SAO inclui Viracopos, em Campinas)
+const CITY_CODES = {SAO:["GRU","CGH","VCP"], RIO:["GIG","SDU"], NYC:["JFK","EWR"], BUE:["EZE","AEP"], TYO:["NRT","HND"]};
+const CITY_NAME = {SAO:"São Paulo", RIO:"Rio de Janeiro", NYC:"Nova York", BUE:"Buenos Aires", TYO:"Tóquio"};
+const siblingsOf = c => { const g = Object.values(CITY_CODES).find(g => g.includes(c)); return g ? g.filter(x => x !== c) : []; };
+// Busca por nome da cidade, nome do aeroporto, apelido, código do aeroporto ou código da cidade.
+// Se achar um aeroporto de cidade com vários aeroportos, mostra também os outros da mesma cidade.
 function searchAirports(q){
   const raw = String(q).trim(), n = norm(raw), up = raw.toUpperCase();
   if(!n) return [];
-  const out = [];
+  const best = new Map();
+  const add = (c, sc) => { if(!best.has(c) || sc < best.get(c)) best.set(c, sc); };
+  if(CITY_CODES[up]) CITY_CODES[up].forEach((c,i) => add(c, i*0.01));
   for(const a of AP_INDEX){
     let sc = -1;
     if(a.c === up) sc = 0;
@@ -657,9 +665,13 @@ function searchAirports(q){
     if(a.h.startsWith(" "+n)) sc = sc < 0 ? 1 : Math.min(sc,1);
     else if(sc < 0 && a.h.includes(" "+n)) sc = 3;
     else if(sc < 0 && n.length >= 4 && a.h.includes(n)) sc = 4;
-    if(sc >= 0) out.push([sc, a.c]);
+    if(sc >= 0) add(a.c, sc);
   }
-  return out.sort((x,y) => x[0]-y[0] || x[1].localeCompare(y[1])).slice(0,8).map(x => x[1]);
+  // os outros aeroportos da mesma cidade entram logo depois do encontrado
+  [...best].forEach(([c, sc]) => siblingsOf(c).forEach((x,i) => add(x, sc + 0.5 + i*0.01)));
+  // empate: na mesma cidade, o aeroporto principal primeiro (ordem de CITY_CODES)
+  const rank = c => { for(const g of Object.values(CITY_CODES)){ const i = g.indexOf(c); if(i >= 0) return i; } return 9; };
+  return [...best].sort((x,y) => Math.floor(x[1]) - Math.floor(y[1]) || (x[1]%1 ? 1 : 0) - (y[1]%1 ? 1 : 0) || rank(x[0]) - rank(y[0]) || x[0].localeCompare(y[0])).slice(0,8).map(x => x[0]);
 }
 // Código do aeroporto escolhido no campo: código conhecido, código IATA qualquer, ou nome com um único resultado
 function codeOf(v){

@@ -76,6 +76,18 @@ const assert = (c,m) => { console.log((c?'PASS ':'FAIL ')+m); if(!c) process.exi
     const r = await p.evaluate(q=>searchAirports(q), q);
     assert(r.includes(c), `"${q}" finds ${c}: ${r.join(',')}`);
   }
+  // cidades com mais de um aeroporto: código do aeroporto ou da cidade lista todos
+  for(const [q, exp] of [['GRU','GRU,CGH,VCP'],['CGH','CGH,GRU,VCP'],['SAO','GRU,CGH,VCP'],['sao paulo','GRU,CGH,VCP'],['RIO','GIG,SDU'],['SDU','SDU,GIG'],['NYC','JFK,EWR'],['EWR','EWR,JFK'],['BUE','EZE,AEP'],['TYO','NRT,HND'],['toquio','NRT,HND']]){
+    const r = (await p.evaluate(q=>searchAirports(q), q)).join(',');
+    assert(r.startsWith(exp), `"${q}" lists all city airports: ${r}`);
+  }
+  assert(await p.evaluate(() => codeOf('GRU')==='GRU' && codeOf('SAO')==='' && codeOf('salvador')==='SSA'), 'airport code picks it; city code asks to choose');
+  await p.fill('#to',''); await p.click('#to'); await p.keyboard.type('gru');
+  opts = await p.$$eval('#toList li[data-c]', a=>a.map(x=>x.dataset.c));
+  assert(opts.join(',')==='GRU,CGH,VCP', 'typing an airport code shows the other airports of the city: '+opts);
+  await p.keyboard.press('ArrowDown'); await p.keyboard.press('Enter');
+  assert(await p.inputValue('#to')==='CGH', 'can pick another airport of the same city');
+  await p.fill('#to','SSA'); await p.dispatchEvent('#to','input');
   // ---- links de compra direto nas companhias ----
   const hosts = async () => p.$$eval('.results a[href^="http"], .deals a[href^="http"], #trend a[href^="http"]', a=>[...new Set(a.map(x=>new URL(x.href).hostname))]);
   const THIRD = /google|skyscanner|kayak|momondo|seats\.aero|melhoresdestinos|pontospravoar/;
