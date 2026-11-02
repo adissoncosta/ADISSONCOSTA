@@ -244,6 +244,16 @@ figure.dest figcaption span{font-size:.82rem;opacity:.9}
 .sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
 @media (max-width:520px){.tgrid{grid-template-columns:1fr}.tswap{justify-self:end;transform:rotate(90deg)}}
 
+/* Promoções ao vivo */
+.live-banner{display:flex;flex-wrap:wrap;align-items:center;gap:8px 14px;margin:0 0 14px;padding:14px 16px;border-radius:16px;background:linear-gradient(120deg,#1F5FA8,#2C7BD6);color:#fff}
+.live-banner .dot{display:inline-flex;align-items:center;gap:6px;font-size:.72rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;background:rgba(255,255,255,.18);padding:4px 10px;border-radius:99px}
+.live-banner .dot::before{content:"";width:8px;height:8px;border-radius:50%;background:#FF5A5A;box-shadow:0 0 0 0 rgba(255,90,90,.7);animation:pulse 1.6s infinite}
+@keyframes pulse{70%{box-shadow:0 0 0 8px rgba(255,90,90,0)}100%{box-shadow:0 0 0 0 rgba(255,90,90,0)}}
+@media (prefers-reduced-motion:reduce){.live-banner .dot::before{animation:none}}
+.live-banner .txt{flex:1 1 260px;min-width:0;line-height:1.35}
+.live-banner .txt b{font-size:1.05rem}
+.live-banner .txt small{display:block;opacity:.9;font-size:.82rem}
+.live-banner a{color:#13263B;background:#F2B705;font-weight:700;font-size:.88rem;text-decoration:none;padding:10px 16px;border-radius:99px;white-space:nowrap}
 /* ---- Ajuste automático à tela: celular, tablet, notebook e monitor ---- */
 .chart-empty{margin:0;padding:28px 16px;text-align:center;font-size:.9rem;color:var(--muted);background:var(--bg);border:1px dashed var(--line);border-radius:10px}
 .deal .price{font-size:clamp(1.8rem,8vw,2.3rem)}
@@ -337,9 +347,10 @@ footer{color:var(--muted);font-size:.8rem;max-width:68ch}
   <section class="deals">
     <div class="deals-head">
       <h2>Promoções encontradas</h2>
-      <p class="stamp">Pesquisado em 02/11/2026</p>
+      <p class="stamp" id="dealsStamp">Pesquisado em 02/11/2026</p>
     </div>
-    <p class="sub">Ofertas divulgadas por Melhores Destinos e Pontos pra Voar no fim de outubro de 2026. Os preços mudam rápido e valem para datas específicas; o botão de compra abre a companhia com o trecho preenchido para você conferir o valor.</p>
+    <p class="sub" id="dealsSub">Ofertas divulgadas por Melhores Destinos e Pontos pra Voar no fim de outubro de 2026. Os preços mudam rápido e valem para datas específicas; o botão de compra abre a companhia com o trecho preenchido para você conferir o valor.</p>
+    <div class="live-banner" id="dealsLive" hidden></div>
     <div class="tabs" role="tablist" aria-label="Tipo de oferta">
       <button type="button" role="tab" id="tabCash" aria-selected="true">Em reais</button>
       <button type="button" role="tab" id="tabMiles" aria-selected="false">Em milhas</button>
@@ -1040,9 +1051,9 @@ function renderDeals(){
   const dealCard = (d,i) => {
     const [a,z,cab] = d.fill, multi = /^BR\b/.test(d.route);
     // Uma companhia só: a do menor preço da oferta (cia vende direto; logo só identifica)
-    const who = d.pts ? PROGRAM[d.pts].name : d.cia ? AIRLINE[d.cia].name : d.logo ? AIRLINE[d.logo].name : "Companhia aérea";
+    const who = d.pts ? PROGRAM[d.pts].name : d.cia ? AIRLINE[d.cia].name : d.logo ? airlineName(d.logo) : "Companhia aérea";
     const codes = [d.pts || d.cia || d.logo].filter(Boolean);
-    const age = d.until ? `até ${fmtBR(d.until).slice(0,5)}` : d.date ? `voo em ${fmtBR(d.date).slice(0,5)}` : DEALS_AGE;
+    const age = d.age ? d.age : d.until ? `até ${fmtBR(d.until).slice(0,5)}` : d.date ? `voo em ${fmtBR(d.date).slice(0,5)}` : DEALS_AGE;
     return `
     <article class="deal">
       ${photoBlock(z, {orig: multi ? "várias cidades" : cityOf(a), chipR: CABIN_PT[cab], chipL: d.badge, flag: flagFor(z, d)})}
@@ -1276,12 +1287,58 @@ $("exList").addEventListener("click", e => {
   $("exGo").hidden = !ok && !window.RADAR_API;
   exIdleMsg();
 })();
+// ---- Promoções ao vivo: campanhas oficiais da Azul e Melhores Destinos, pelo servidor de preços ----
+let liveDealsAt = 0, liveDealsRun = false;
+const agoTxt = t => { const m = Math.round((Date.now() - t) / 60000); return m < 1 ? "agora" : m < 60 ? `há ${m} min` : m < 1440 ? `há ${Math.round(m/60)} h` : `há ${Math.round(m/1440)} dia${m >= 2880 ? "s" : ""}`; };
+function liveDeal(o){
+  if(!o || !o.to || !(o.price > 0)) return null;
+  if(o.fromName && !AIRPORTS[o.from]) AIRPORTS[o.from] = o.fromName;
+  if(o.toName && !AIRPORTS[o.to]) AIRPORTS[o.to] = o.toName;
+  if(!AIRPORTS[o.to]) return null;
+  const nat = (!o.from || countryOf(o.from) === "BR") && countryOf(o.to) === "BR";
+  const air = o.airline && AIRLINE[o.airline] && AIRLINE[o.airline].url ? {cia:o.airline} : o.airline ? {logo:o.airline} : {};
+  const price = "R$ " + o.price.toLocaleString("pt-BR", {minimumFractionDigits: o.price % 1 ? 2 : 0, maximumFractionDigits: 2});
+  if(o.source === "azul"){
+    const seen = o.seen ? " · preço visto há " + o.seen.replace(/\s*atrás$/, "") : "";
+    return {route:`${o.from} → ${o.to}`, title:`${cityOf(o.from)} a ${cityOf(o.to)} pela Azul`, price, unit:o.oneWay ? "só ida" : "ida e volta",
+      info:[`${o.campaign}${seen}`], badge:nat ? "Nacional" : "Internacional", fill:[o.from, o.to, "economy"], ...air, date:o.dep, ret:o.ret || "", src:o.url, live:true, n:o.price};
+  }
+  const pub = Date.parse(o.pub || "");
+  return {route:`${o.from || "BR"} → ${o.to}`, title:o.title, price, unit:o.roundTrip ? "ida e volta" : "a partir de",
+    info:[`Melhores Destinos${pub ? " · publicada " + agoTxt(pub) : ""}`], badge:nat ? "Nacional" : "Internacional", fill:[o.from || "GRU", o.to, "economy"], ...air,
+    age: pub ? agoTxt(pub) : "", src:o.url, live:true, n:o.price};
+}
+function liveBanner(cs){
+  const c = (cs || []).find(c => c.price);
+  $("dealsLive").hidden = !c;
+  if(c) $("dealsLive").innerHTML = `<span class="dot">Ao vivo</span><div class="txt"><b>${esc(c.name)}: passagens a partir de ${esc(c.price)}${c.points ? " ou " + esc(c.points) : ""}</b><small>${esc([c.cond, c.when].filter(Boolean).join(" "))}</small></div><a href="${esc(c.url)}" target="_blank" rel="noopener">Ver na Azul →</a>`;
+}
+async function loadLiveDeals(){
+  if(!window.RADAR_API || liveDealsRun) return;
+  liveDealsRun = true;
+  try{
+    const r = await fetch(`${window.RADAR_API}?ofertas=1`);
+    const j = await r.json();
+    const cash = r.ok && Array.isArray(j.cash) ? j.cash.map(liveDeal).filter(Boolean) : [];
+    if(cash.length >= 2){
+      DEALS.cash = cash.sort((a,b) => a.n - b.n);
+      liveDealsAt = Date.parse(j.at) || Date.now();
+      liveBanner(j.campaigns);
+      $("dealsStamp").textContent = `Atualizado às ${hhmm(liveDealsAt)}`;
+      $("dealsSub").textContent = "Promoções em reais buscadas agora nas campanhas oficiais da Azul e no Melhores Destinos, e atualizadas sozinhas a cada 10 minutos. Os preços mudam rápido; o botão de compra abre a companhia com o trecho e a data da oferta.";
+      renderDeals(); renderFavs();
+    }
+  } catch(e){ /* sem conexão com o servidor: fica a lista guardada */ }
+  liveDealsRun = false;
+}
+setInterval(loadLiveDeals, 10*60e3);
+document.addEventListener("visibilitychange", () => { if(!document.hidden && Date.now() - liveDealsAt > 10*60e3) loadLiveDeals(); });
 $("tabCash").onclick=()=>{dealTab="cash";renderDeals();};
 $("tabMiles").onclick=()=>{dealTab="miles";renderDeals();};
 // Trecho de compra de uma oferta: data da oferta (milhas, só ida) ou as datas do formulário
 function dealSearch(d){
   const [from,to,cabin] = d.fill, f = state();
-  if(d.date) return {from, to, cabin, pax:1, dep:d.date, ret:""};
+  if(d.date) return {from, to, cabin, pax:1, dep:d.date, ret:d.ret || ""};
   const dep = f.dep && f.dep >= ymd(today) ? f.dep : iso(d1);
   const ret = $("ret").value > dep ? $("ret").value : addDays(dep, 10);
   return {from, to, cabin, pax:f.pax||1, dep, ret};
@@ -1293,7 +1350,7 @@ $("deals").addEventListener("click",e=>{
   const d=activeDeals(dealTab)[+b.dataset.i], [a,z,cab]=d.fill;
   $("from").value=a; $("to").value=z; $("cabin").value=cab;
   // Ofertas em milhas valem por trecho e numa data específica
-  if(d.date){ oneWay=true; $("dep").value=d.date; }
+  if(d.date){ oneWay=!d.ret; $("dep").value=d.date; if(d.ret) $("ret").value=d.ret; }
   else if(dealTab==="cash"){ oneWay=false; if($("ret").value<=$("dep").value){ $("ret").value=addDays($("dep").value,10); } }
   render();
   $("form").scrollIntoView({behavior:matchMedia("(prefers-reduced-motion: reduce)").matches?"auto":"smooth",block:"start"});
@@ -1732,6 +1789,7 @@ addEventListener("resize", () => { clearTimeout(tResize); tResize = setTimeout((
 })();
 if(!exOrigin) exOrigin = state().from || null;
 exReady = true; renderDeals(); render(); renderFavs(); exIdleMsg(); calc(); renderTrend(); tReady = true;
+loadLiveDeals();
 // com servidor de preços, já busca os destinos mais baratos da origem ao abrir a página
 if(window.RADAR_API && exOrigin && !(exData && exData.key === exKey(exOrigin))) exStart();
 </script>

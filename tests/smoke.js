@@ -234,6 +234,12 @@ const assert = (c,m) => { console.log((c?'PASS ':'FAIL ')+m); if(!c) process.exi
     const q = Object.fromEntries(new URL(route.request().url()).searchParams); apiCalls.push(q);
     const H = {'Access-Control-Allow-Origin':'*','Content-Type':'application/json'};
     if(q.to === 'FOR') return route.fulfill({status:502, headers:H, body:JSON.stringify({error:'upstream', message:'Travelpayouts respondeu 500'})});
+    if('ofertas' in q) return route.fulfill({status:200, headers:H, body:JSON.stringify({at:'2026-11-02T11:55:00Z',
+      campaigns:[{name:'Anoiteceu Azul', url:'https://passagens.voeazul.com.br/pt/anoiteceu', price:'R$ 219,90', points:'8.000 pontos', cond:'No cartão Azul Itau. Consulte condições.', when:'É só essa noite, das 18h às 23h59!'}],
+      cash:[{source:'azul', campaign:'Anoiteceu Azul', url:'https://passagens.voeazul.com.br/pt/anoiteceu', from:'GRU', to:'GIG', fromName:'São Paulo', toName:'Rio de Janeiro', price:214.53, dep:'2027-03-04', ret:'', oneWay:true, seen:'3 horas atrás', airline:'AD'},
+            {source:'azul', campaign:'Anoiteceu Azul', url:'https://passagens.voeazul.com.br/pt/anoiteceu', from:'MCP', to:'BEL', fromName:'Macapá', toName:'Belém', price:240.92, dep:'2027-04-29', ret:'', oneWay:true, seen:'1 dia atrás', airline:'AD'},
+            {source:'md', title:'Santa Catarina bem barato! Passagens para Florianópolis a partir de R$ 278 ida e volta', url:'https://www.melhoresdestinos.com.br/promocao/sc', pub:'Mon, 02 Nov 2026 09:00:00 +0000', from:'POA', to:'FLN', price:278, roundTrip:true, airline:'AD'},
+            {source:'md', title:'Lisboa a partir de R$ 3.599 ida e volta', url:'https://md/2', pub:'', from:'', to:'LIS', price:3599, roundTrip:true, airline:'LA'}], errors:[]})});
     if(q.days){ // modo 12 meses: menor preço de cada mês
       const M = {LIS10:{'2027-09':{price:2990,airline:'TP',departure_at:'2027-09-20T08:00:00-03:00',return_at:'2027-09-30T08:00:00-03:00'}}, GIG:{'2026-12':{price:350,airline:'G3',departure_at:'2026-12-05T08:00:00-03:00',return_at:'2026-12-12T08:00:00-03:00'},'2027-03':{price:299,airline:'G3',departure_at:'2027-03-14T08:00:00-03:00',return_at:'2027-03-21T08:00:00-03:00'}},
                  SSA:{'2027-05':{price:540,airline:'AD',departure_at:'2027-05-02T08:00:00-03:00',return_at:'2027-05-09T08:00:00-03:00'}},
@@ -259,6 +265,18 @@ const assert = (c,m) => { console.log((c?'PASS ':'FAIL ')+m); if(!c) process.exi
   assert(q1 && q1.ret==='2027-01-08' && q1.cabin==='economy', 'asks the server for the chosen route and dates');
   assert(/menores preços encontrados/.test(await pa.textContent('#cashH')), 'heading says prices found');
   assert(await pa.isHidden('#liveOff'), 'no "open in the Claude app" note when the site has prices');
+  // promoções ao vivo (Azul e Melhores Destinos)
+  await pa.waitForFunction(() => !document.getElementById('dealsLive').hidden, null, {timeout:8000}).catch(()=>{});
+  const live = await pa.evaluate(() => ({banner: document.getElementById('dealsLive').textContent.replace(/\s+/g,' ').trim(), stamp: document.getElementById('dealsStamp').textContent,
+    nat: [...document.querySelectorAll('#deals-nat .deal')].map(x => x.querySelector('h3').textContent+' | '+x.querySelector('.price').textContent+' | '+x.querySelector('.who').textContent.replace(/\s+/g,' ').trim()),
+    intl: [...document.querySelectorAll('#deals-int .deal h3')].map(x => x.textContent)}));
+  assert(/Ao vivo/.test(live.banner) && /Anoiteceu Azul: passagens a partir de R\$ 219,90 ou 8\.000 pontos/.test(live.banner) && /essa noite/.test(live.banner), 'live Azul campaign banner: '+live.banner);
+  assert(/Atualizado às/.test(live.stamp), 'deals stamp shows update time: '+live.stamp);
+  assert(live.nat.length === 3 && /^São Paulo a Rio de Janeiro pela Azul \| R\$ 214,53só ida/.test(live.nat[0]) && /Macapá a Belém pela Azul/.test(live.nat[1]) && /Azul/.test(live.nat[0].split(' | ')[2]) && /voo em 04\/03/.test(live.nat[0]), 'live deals replace the stored list, cheapest first: '+live.nat.join(' || '));
+  assert(live.intl.length === 1 && /Lisboa/.test(live.intl[0]), 'live international deal: '+live.intl.join());
+  const azBuy = await pa.$('#deals-nat .deal a[data-buy]'); await azBuy.dispatchEvent('pointerdown');
+  const azHref = await azBuy.getAttribute('href');
+  assert(/voeazul.*c\[0\]\.ds=GRU.*c\[0\]\.as=GIG/.test(azHref) && azHref.includes('03%2F04%2F2027') || /voeazul/.test(azHref) && /2027/.test(azHref), 'Azul deal buy button opens Azul on the deal date: '+azHref.slice(0,160));
   // Para onde vamos viajar? pelo servidor
   await pa.evaluate(() => scrollTo(0,0));
   await pa.fill('#exFrom','curitiba'); await pa.dispatchEvent('#exFrom','input'); await pa.keyboard.press('Enter');
