@@ -281,6 +281,8 @@ const assert = (c,m) => { console.log((c?'PASS ':'FAIL ')+m); if(!c) process.exi
   const recNote = await pa.$$eval('#exList .fav', a => (a.find(x => /Recife/.test(x.querySelector('.city').textContent))||{}).textContent||'');
   assert(/melhor de nov\/26 · ida 02\/11/.test(recNote) || /melhor de dez\/26/.test(recNote), 'month-scope destination price says which month/date: '+recNote.replace(/\s+/g,' ').trim().slice(-60));
   // Preço ao longo do ano: os 12 meses se preenchem sozinhos (trecho padrão GRU → LIS, 10 dias)
+  // espera os pedidos de preço em andamento terminarem antes de recarregar (o WebKit acusa pedido interrompido)
+  await pa.waitForLoadState('networkidle'); await pa.waitForTimeout(500);
   await pa.reload(); await pa.waitForTimeout(400);
   await pa.waitForFunction(() => (document.getElementById('tp-2027-09')||{}).value === '2.990', null, {timeout:8000}).catch(()=>{});
   const tq = apiCalls.find(q => q.from==='GRU' && q.to==='LIS' && q.days==='10');
