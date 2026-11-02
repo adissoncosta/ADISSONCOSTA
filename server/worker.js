@@ -68,6 +68,12 @@ export async function prices(env, p, fetchImpl = fetch) {
     scope = "month";
     rows = await tp(env, { ...base, origin: cf, destination: ct, ...month }, fetchImpl);
   }
+  // nada no mês escolhido: o preço mais próximo nos 2 meses seguintes
+  for (let i = 1; i <= 2 && !rows.length; i++) {
+    const d = new Date(Date.UTC(+p.dep.slice(0, 4), +p.dep.slice(5, 7) - 1 + i, 1)).toISOString().slice(0, 7);
+    scope = "later";
+    rows = await tp(env, { ...base, origin: cf, destination: ct, departure_at: d }, fetchImpl);
+  }
   return { from: p.from, to: p.to, dep: p.dep, ret: p.ret || "", scope, currency: "BRL", at: new Date().toISOString(), airlines: cheapestByAirline(rows) };
 }
 

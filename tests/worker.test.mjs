@@ -30,7 +30,10 @@ r = await prices(env, { from: "CWB", to: "GIG", dep: "2027-01-01", ret: "2027-01
 assert(calls.length === 3 && calls[2].origin === "CWB" && calls[2].destination === "RIO" && calls[2].departure_at === "2027-01" && r.airlines.G3.price === 450 && r.scope === "month", "then tries the city code (GIG -> RIO)");
 calls = [];
 await prices(env, { from: "CWB", to: "FOR", dep: "2027-01-01", ret: "2027-01-08" }, fake(() => []));
-assert(calls.length === 2, "no city retry for single-airport cities");
+assert(calls.length === 4 && !calls.some(q => q.destination !== "FOR"), "no city retry for single-airport cities (then 2 later months)");
+calls = [];
+r = await prices(env, { from: "CWB", to: "CNF", dep: "2026-11-07", ret: "" }, fake(q => q.departure_at === "2026-12" ? [{ airline: "G3", price: 479, departure_at: "2026-12-09T08:00:00-03:00" }] : []));
+assert(r.scope === "later" && r.airlines.G3.price === 479 && calls[2].departure_at === "2026-12" && !("return_at" in calls[2]), "no fare in the chosen month: nearest of the next months (scope later)");
 // 12 meses, preferindo duração próxima da escolhida
 calls = [];
 const m = await months(env, { from: "GRU", to: "LIS", days: 10 }, new Date("2026-11-02T12:00:00Z"), fake(q => q.departure_at === "2026-12" ? [
