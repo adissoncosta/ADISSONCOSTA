@@ -292,6 +292,7 @@ const assert = (c,m) => { console.log((c?'PASS ':'FAIL ')+m); if(!c) process.exi
   await pa.fill('#dep','2026-12-02'); await pa.dispatchEvent('#dep','change');
   await pa.fill('#ret','2026-12-12'); await pa.dispatchEvent('#ret','change');
   await pa.waitForFunction(() => (document.getElementById('tp-2027-09')||{}).value === '2.990', null, {timeout:8000}).catch(()=>{});
+  await pa.waitForTimeout(800);
   const tr2 = await pa.evaluate(() => ({route: [tFrom.value, tTo.value, tDep.value, tDays.value].join(' '), v: document.getElementById('tp-2027-09').value, note: document.querySelector('.mo-s[data-s="2027-09"]').textContent}));
   assert(tr2.route === 'GRU LIS 2026-12-02 10' && tr2.v === '2.990' && /TAP Air Portugal · ida 20\/09/.test(tr2.note), 'changing the search updates the yearly chart: '+JSON.stringify(tr2));
   assert(apiCalls.some(q => q.from==='GRU' && q.to==='LIS' && q.days==='10'), 'chart asks the server for the new route');

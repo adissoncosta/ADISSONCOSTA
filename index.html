@@ -1384,11 +1384,17 @@ function tAutoNote(data, k){
   return data._auto ? "sem preço recente" : "";
 }
 const tAutoAsked = new Set();
-function tAutoMaybe(s){
-  if(tMode !== "api" || tRun) return;
-  const key = tKey(s), data = tStore.get(key);
-  if(tAutoAsked.has(key) || (data._auto && Date.now() - data._auto.at < 6*3600e3)) return;
-  tAutoAsked.add(key); autoFillApi();
+let tAutoTimer = null;
+// espera o trecho parar de mudar (ex.: origem e destino trocados em sequência) antes de buscar
+function tAutoMaybe(){
+  if(tMode !== "api") return;
+  clearTimeout(tAutoTimer);
+  tAutoTimer = setTimeout(() => {
+    if(tRun) return;  // ao terminar, a busca em andamento confere de novo o trecho atual
+    const s = tState(), key = tKey(s), data = tStore.get(key);
+    if(s.from === s.to || tAutoAsked.has(key) || (data._auto && Date.now() - data._auto.at < 6*3600e3)) return;
+    tAutoAsked.add(key); autoFillApi();
+  }, 400);
 }
 function renderTrend(){
   const s = tState();
@@ -1414,7 +1420,7 @@ function renderTrend(){
     </div>`;
   }).join("");
   drawTrend(s, months, saved, deal);
-  if(!e) tAutoMaybe(s);
+  if(!e) tAutoMaybe();
 }
 
 function drawTrend(s, months, saved, deal){
@@ -1567,13 +1573,14 @@ async function autoFillApi(){
     data._auto = auto;
     tStore.set(key, data);
     if(same()) renderTrend();
-    tMsg(found
+    if(same()) tMsg(found
       ? `Menor preço de cada mês: ${found} de 12 meses com preço para ${s.from} → ${s.to} (${s.days ? `ida e volta, cerca de ${s.days} dias` : "só ida"}, 1 adulto), atualizado às ${hhmm(auto.at)}. Cada mês mostra a companhia e o dia do menor preço.`
       : "Ainda não há preços recentes para este trecho. Tente outra rota ou duração, ou anote manualmente.");
   } catch(e){
-    tMsg(e && e.message && !/fetch/i.test(e.message) ? e.message : "Não consegui buscar os preços. Verifique a conexão e tente de novo.");
+    if(same()) tMsg(e && e.message && !/fetch/i.test(e.message) ? e.message : "Não consegui buscar os preços. Verifique a conexão e tente de novo.");
   } finally {
     tRun = null; $("tAutoBtn").disabled = false;
+    if(!same()) tAutoMaybe();  // o trecho mudou durante a busca: busca o atual
   }
 }
 async function autoFill(){
