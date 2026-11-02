@@ -1,0 +1,66 @@
+# Testa o Radar de Passagens nos três motores de navegador e publica o site no GitHub Pages.
+# Chromium = Google Chrome e Microsoft Edge · Firefox · WebKit = Safari (Mac e iPhone)
+name: Testes e site
+
+on:
+  push:
+    branches: [claude/ticket-sales-promo-app-zplsze, main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: site-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  testes:
+    name: Testes (${{ matrix.browser }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        browser: [chromium, firefox, webkit]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Instalar Playwright
+        run: npm install --no-audit --no-fund
+      - name: Instalar o navegador
+        run: npx playwright install --with-deps ${{ matrix.browser }}
+      - name: Rodar os testes
+        run: node tests/smoke.js
+        env:
+          BROWSER: ${{ matrix.browser }}
+
+  site:
+    name: Publicar no GitHub Pages
+    # Publica mesmo se um navegador falhar, para dar para conferir o problema no site
+    if: github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Montar o site (só a página e as imagens)
+        run: |
+          mkdir _site
+          cp index.html _site/
+          cp -r img _site/
+          rm -f _site/img/*.json
+          touch _site/.nojekyll
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+      - id: deployment
+        uses: actions/deploy-pages@v4

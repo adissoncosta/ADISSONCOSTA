@@ -13,11 +13,29 @@ Página única (HTML/CSS/JS, sem dependências) para achar passagens aéreas pro
 
 Abra `index.html` no navegador.
 
+## Site
+
+O GitHub Actions publica a página no GitHub Pages a cada push:
+**https://adissoncosta.github.io/ADISSONCOSTA/**
+
+Para funcionar, o Pages precisa estar ligado uma vez: *Settings → Pages → Build and deployment → Source: GitHub Actions*.
+
 ## Testar
 
+Os testes rodam no GitHub Actions nos três motores de navegador a cada push (workflow `Testes e site`):
+
+| Motor | Navegadores |
+|---|---|
+| Chromium | Google Chrome, Microsoft Edge, Opera, Samsung Internet |
+| Firefox | Mozilla Firefox |
+| WebKit | Safari no Mac, iPhone e iPad |
+
+Para rodar localmente:
+
 ```bash
-npm i -D playwright   # se ainda não tiver
-node tests/smoke.js
+npm install
+npx playwright install chromium firefox webkit
+npm run test:chromium   # ou test:firefox, test:webkit
 ```
 
 O teste fixa o relógio em 02/11/2026; atualize as datas das ofertas em `DEALS` quando trocar as promoções.

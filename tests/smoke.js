@@ -1,7 +1,11 @@
-const { chromium } = require('playwright');
+// Navegador do teste: BROWSER=chromium (padrão, Chrome/Edge), firefox ou webkit (Safari)
+const BROWSER = process.env.BROWSER || 'chromium';
+const engine = require('playwright')[BROWSER];
+if(!engine) throw new Error('BROWSER inválido: '+BROWSER+' (use chromium, firefox ou webkit)');
 const assert = (c,m) => { console.log((c?'PASS ':'FAIL ')+m); if(!c) process.exitCode=1; };
 (async () => {
-  const b = await chromium.launch();
+  console.log('Navegador: '+BROWSER);
+  const b = await engine.launch();
   const ctx = await b.newContext({viewport:{width:375,height:760}});
   // Relógio fixo para o teste não depender da data real
   const fixClock = iso => `(()=>{const R=Date,t=new R('${iso}').getTime();Date=class extends R{constructor(...a){super(...(a.length?a:[t]))}static now(){return t}}})()`;
