@@ -235,10 +235,10 @@ const assert = (c,m) => { console.log((c?'PASS ':'FAIL ')+m); if(!c) process.exi
     const H = {'Access-Control-Allow-Origin':'*','Content-Type':'application/json'};
     if(q.to === 'FOR') return route.fulfill({status:502, headers:H, body:JSON.stringify({error:'upstream', message:'Travelpayouts respondeu 500'})});
     if(q.days){ // modo 12 meses: menor preço de cada mês
-      const M = {GIG:{'2026-12':{price:350,airline:'G3',departure_at:'2026-12-05T08:00:00-03:00',return_at:'2026-12-12T08:00:00-03:00'},'2027-03':{price:299,airline:'G3',departure_at:'2027-03-14T08:00:00-03:00',return_at:'2027-03-21T08:00:00-03:00'}},
+      const M = {LIS10:{'2027-09':{price:2990,airline:'TP',departure_at:'2027-09-20T08:00:00-03:00',return_at:'2027-09-30T08:00:00-03:00'}}, GIG:{'2026-12':{price:350,airline:'G3',departure_at:'2026-12-05T08:00:00-03:00',return_at:'2026-12-12T08:00:00-03:00'},'2027-03':{price:299,airline:'G3',departure_at:'2027-03-14T08:00:00-03:00',return_at:'2027-03-21T08:00:00-03:00'}},
                  SSA:{'2027-05':{price:540,airline:'AD',departure_at:'2027-05-02T08:00:00-03:00',return_at:'2027-05-09T08:00:00-03:00'}},
                  LIS:{'2027-09':{price:2990,airline:'TP',departure_at:'2027-09-20T08:00:00-03:00',return_at:'2027-09-27T08:00:00-03:00'}}};
-      return route.fulfill({status:200, headers:H, body:JSON.stringify({months: M[q.to] || {}})});
+      return route.fulfill({status:200, headers:H, body:JSON.stringify({months: (q.days==='10' && M[q.to+'10']) || M[q.to] || {}})});
     }
     const P = {GIG:{G3:{price:389,transfers:0}, LA:{price:412.5,transfers:1}, AV:{price:350,transfers:1}}, SSA:{AD:{price:612}}, LIS:{TP:{price:3480}}, REC:{G3:{price:701}}};
     const airlines = Object.fromEntries(Object.entries(P[q.to]||{}).map(([k,v]) => [k, {departure_at:(q.dep||'')+'T08:00:00-03:00', ...v}]));
@@ -280,6 +280,16 @@ const assert = (c,m) => { console.log((c?'PASS ':'FAIL ')+m); if(!c) process.exi
   assert(/^Rio:R\$\s350$/.test(exA[0]) && /^Salvador:R\$\s612$/.test(exA[1]) && /^Recife:R\$\s701$/.test(exA[2]) && /^Lisboa/.test(exA[3]), 'fixed date still works, cheapest first: '+exA.join(' | '));
   const recNote = await pa.$$eval('#exList .fav', a => (a.find(x => /Recife/.test(x.querySelector('.city').textContent))||{}).textContent||'');
   assert(/melhor de nov\/26 · ida 02\/11/.test(recNote) || /melhor de dez\/26/.test(recNote), 'month-scope destination price says which month/date: '+recNote.replace(/\s+/g,' ').trim().slice(-60));
+  // Preço ao longo do ano: os 12 meses se preenchem sozinhos (trecho padrão GRU → LIS, 10 dias)
+  await pa.reload(); await pa.waitForTimeout(400);
+  await pa.waitForFunction(() => (document.getElementById('tp-2027-09')||{}).value === '2.990', null, {timeout:8000}).catch(()=>{});
+  const tq = apiCalls.find(q => q.from==='GRU' && q.to==='LIS' && q.days==='10');
+  const tAuto = await pa.evaluate(() => ({v: document.getElementById('tp-2027-09').value, note: document.querySelector('.mo-s[data-s="2027-09"]').textContent, other: document.querySelector('.mo-s[data-s="2026-12"]').textContent, axis: document.querySelectorAll('#tChart .axis').length}));
+  assert(tq && tAuto.v === '2.990' && /TAP Air Portugal · ida 20\/09/.test(tAuto.note) && /sem preço recente/.test(tAuto.other) && tAuto.axis > 0, 'yearly chart fills each month by itself, with airline and day: '+JSON.stringify(tAuto));
+  await pa.fill('#tp-2026-12','1500'); await pa.dispatchEvent('#tp-2026-12','change');
+  await pa.click('#tAutoBtn'); await pa.waitForTimeout(600);
+  const tMan = await pa.evaluate(() => ({v: document.getElementById('tp-2026-12').value, note: document.querySelector('.mo-s[data-s="2026-12"]').textContent, auto: document.getElementById('tp-2027-09').value}));
+  assert(tMan.v === '1.500' && /anotado por você/.test(tMan.note) && tMan.auto === '2.990', 'refreshing keeps what you typed: '+JSON.stringify(tMan));
   assert(errsA.length===0, 'no page errors with price server '+errsA.join(';'));
   await b.close();
 })();

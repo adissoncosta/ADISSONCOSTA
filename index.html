@@ -1349,6 +1349,20 @@ function tDealFor(s){
   return activeDeals("cash").find(d => d.fill[0]===s.from && d.fill[1]===s.to && d.fill[2]==="economy" && parseBRL(d.price));
 }
 
+// Menor preço de cada mês pelo servidor de preços: companhia e dia ficam guardados em data._auto
+function tAutoNote(data, k){
+  if(data._manual && data._manual[k]) return data[k] ? "anotado por você" : "";
+  const a = data._auto && data._auto.months && data._auto.months[k];
+  if(a) return `${esc(AIRLINE[a.airline] ? AIRLINE[a.airline].name : (a.airline || ""))}${a.dep ? " · ida "+fmtBR(a.dep).slice(0,5) : ""}`;
+  return data._auto ? "sem preço recente" : "";
+}
+const tAutoAsked = new Set();
+function tAutoMaybe(s){
+  if(tMode !== "api" || tRun) return;
+  const key = tKey(s), data = tStore.get(key);
+  if(tAutoAsked.has(key) || (data._auto && Date.now() - data._auto.at < 6*3600e3)) return;
+  tAutoAsked.add(key); autoFillApi();
+}
 function renderTrend(){
   const s = tState();
   let e = "";
@@ -1369,10 +1383,11 @@ function renderTrend(){
       <label class="sr" for="tp-${mo.key}">Menor preço encontrado em ${MES_LONGO[mo.m]} de ${mo.y}</label>
       <input id="tp-${mo.key}" data-k="${mo.key}" inputmode="decimal" autocomplete="off" placeholder="R$ anotar" value="${v ? v.toLocaleString("pt-BR") : ""}">
       <div class="mo-l">${L.buy.slice(0,2).map(([n,u]) => `<a href="${esc(u)}" target="_blank" rel="noopener">${esc(n)}</a>`).join("")}</div>
-      <small class="mo-s" data-s="${mo.key}"></small>
+      <small class="mo-s" data-s="${mo.key}">${tAutoNote(saved, mo.key)}</small>
     </div>`;
   }).join("");
   drawTrend(s, months, saved, deal);
+  if(!e) tAutoMaybe(s);
 }
 
 function drawTrend(s, months, saved, deal){
@@ -1437,12 +1452,13 @@ $("tSwap").onclick = () => { const a=$("tFrom").value; $("tFrom").value=$("tTo")
 $("tMonths").addEventListener("change", e => {
   const inp = e.target.closest("input[data-k]"); if(!inp) return;
   const s = tState(), k = tKey(s), data = tStore.get(k), v = parseBRL(inp.value);
-  if(v) data[inp.dataset.k] = v; else delete data[inp.dataset.k];
+  if(v){ data[inp.dataset.k] = v; (data._manual = data._manual || {})[inp.dataset.k] = 1; }
+  else { delete data[inp.dataset.k]; if(data._manual) delete data._manual[inp.dataset.k]; }
   tStore.set(k, data);
   inp.value = v ? v.toLocaleString("pt-BR") : "";
   drawTrend(s, tMonths(s), data, tDealFor(s));
 });
-$("tClear").onclick = () => { const s=tState(); tStore.set(tKey(s), {}); renderTrend(); };
+$("tClear").onclick = () => { const s=tState(), k=tKey(s); tStore.set(k, {}); tAutoAsked.add(k); renderTrend(); };
 // ---- Preenchimento automático pelo navegador do app Claude ----
 const BROWSER = "host:claude_browser";
 let tMcp = null, tRun = null;
@@ -1452,7 +1468,8 @@ let tMode = null;
 (async () => {
   if(window.RADAR_API){
     tMode = "api";
-    $("tAutoDesc").textContent = "Busca de uma vez o menor preço de cada um dos próximos 12 meses nas tarifas encontradas por viajantes no Aviasales nos últimos dias. Rotas pouco buscadas podem ficar com meses sem preço.";
+    $("tAutoDesc").textContent = "Os 12 meses se preenchem sozinhos com o menor preço do trecho em cada mês, a partir das tarifas encontradas por viajantes nos últimos dias. Rotas pouco buscadas podem ficar com meses sem preço; nesses, você pode anotar o valor à mão.";
+    $("tAutoBtn").textContent = "Atualizar preços";
     $("tAuto").hidden = false; $("tAutoOff").hidden = true;
     return;
   }
@@ -1509,25 +1526,21 @@ async function autoFillApi(){
     const j = await r.json().catch(() => ({}));
     if(!r.ok) throw new Error(j.error === "no_token" ? "O site ainda não tem a chave da API configurada (TRAVELPAYOUTS_TOKEN)." : (j.message || `O servidor respondeu com erro ${r.status}.`));
     let found = 0;
+    const auto = {at: Date.now(), months:{}}, manual = data._manual || {};
     months.forEach(mo => {
       const v = j.months && j.months[mo.key];
-      if(v && v.price > 0){ data[mo.key] = Math.round(v.price); found++; }
+      if(!manual[mo.key]) delete data[mo.key];
+      if(v && v.price > 0){
+        found++;
+        auto.months[mo.key] = {airline: v.airline || "", dep: (v.departure_at || "").slice(0,10)};
+        if(!manual[mo.key]) data[mo.key] = Math.round(v.price);
+      }
     });
+    data._auto = auto;
     tStore.set(key, data);
-    if(same()){
-      renderTrend();
-      months.forEach(mo => {
-        const v = j.months && j.months[mo.key], el = document.querySelector(`.mo-s[data-s="${mo.key}"]`);
-        if(!el) return;
-        if(v && v.price > 0){
-          const dt = v.departure_at ? ` · ida ${fmtBR(v.departure_at.slice(0,10)).slice(0,5)}` : "";
-          el.innerHTML = v.link ? `<a href="${encodeURI(v.link)}" target="_blank" rel="noopener" style="color:var(--accent)">automático${dt}</a>` : `automático${dt}`;
-        } else el.textContent = "sem preço recente";
-      });
-    }
-    const now = new Date();
+    if(same()) renderTrend();
     tMsg(found
-      ? `Pronto: ${found} de 12 meses com preço, ${s.from} → ${s.to}, em ${pad2(now.getDate())}/${pad2(now.getMonth()+1)} às ${pad2(now.getHours())}:${pad2(now.getMinutes())}. Preço para 1 adulto; toque em "automático" no mês para ver a oferta.`
+      ? `Menor preço de cada mês: ${found} de 12 meses com preço para ${s.from} → ${s.to} (${s.days ? `ida e volta, cerca de ${s.days} dias` : "só ida"}, 1 adulto), atualizado às ${hhmm(auto.at)}. Cada mês mostra a companhia e o dia do menor preço.`
       : "Ainda não há preços recentes para este trecho. Tente outra rota ou duração, ou anote manualmente.");
   } catch(e){
     tMsg(e && e.message && !/fetch/i.test(e.message) ? e.message : "Não consegui buscar os preços. Verifique a conexão e tente de novo.");
