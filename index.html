@@ -116,6 +116,7 @@ a.go.fl .tm + strong{margin-top:1px}
 a.go.fl .c1 > strong:first-child{font-size:1rem;font-weight:600;color:var(--ink)}
 a.go.fl .wd{color:var(--warn)}
 .fl .c2 b,.fl .c3 b{display:block;font-weight:600;color:var(--ink);font-size:.95rem}
+.fl .c3 b em{font-style:normal;font-weight:500;color:var(--muted)}
 .fl .c4{text-align:right}
 a.go.fl .lp{margin:0;font-size:1.3rem}
 a.go.fl .lp.low{color:var(--good)}
@@ -978,7 +979,7 @@ const flRow = (s, cheapest) => c => {
     <span class="lg" aria-hidden="true">${logo}</span>
     <span class="c1">${tm ? `<span class="tm">${tm}</span>` : ""}<strong class="notranslate" translate="no">${esc(c.name)}${c.best ? '<span class="tag2">menor preço</span>' : ""}</strong>${when ? `<span class="wd">${esc(when)}</span>` : ""}</span>
     <span class="c2">${api && p.dur ? `<b>${durTxt(p.dur)}</b>` : ""}<span>${esc(route)}</span></span>
-    <span class="c3">${api && p.stops != null ? `<b>${stopsTxt(p.stops)}</b>` : ""}${api && p.fn ? `<span>voo ${esc(p.fn)}</span>` : p && !api ? `<span>${p.from === "voos" ? "voo mais barato no site" : "menor valor no site"}</span>` : ""}</span>
+    <span class="c3">${api && p.stops != null ? `<b>${stopsTxt(p.stops)}${p.via && p.via.length && p.via.length === p.stops ? ` <em>${esc(p.via.join(", "))}</em>` : ""}</b>` : ""}${api && p.fn ? `<span>voo ${esc(p.fn)}</span>` : p && !api ? `<span>${p.from === "voos" ? "voo mais barato no site" : "menor valor no site"}</span>` : ""}</span>
     <span class="c4">${priceTxt}</span>
     <span class="arrow">${c.buy ? "Comprar" : "Abrir"} →</span></a>`;
 };
@@ -1011,7 +1012,7 @@ function apiPrices(s, force = false){
       const codes = Object.keys(j.airlines || {}).filter(c => AIRLINE[c]);
       const prices = {};
       codes.forEach(c => { const a = j.airlines[c]; prices[AIRLINE[c].name] = {v:a.price, from:"api", scope:j.scope, dep:(a.departure_at || s.dep).slice(0,10), stops:a.transfers,
-        t:a.departure_at || "", dur:a.duration || 0, oa:a.origin_airport || "", da:a.destination_airport || "", fn:a.flight_number || ""}; });
+        t:a.departure_at || "", dur:a.duration || 0, oa:a.origin_airport || "", da:a.destination_airport || "", fn:a.flight_number || "", via:a.via || []}; });
       const status = Object.fromEntries([...names, ...codes.map(c => AIRLINE[c].name)].map(n => [n, prices[n] ? "ok" : "noapi"]));
       livePrices = {key, at:Date.now(), src:"api", scope:j.scope, prices, codes, status};
       saveLivePrices();

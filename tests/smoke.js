@@ -256,7 +256,7 @@ const assert = (c,m) => { console.log((c?'PASS ':'FAIL ')+m); if(!c) process.exi
                  LIS:{'2027-09':{price:2990,airline:'TP',departure_at:'2027-09-20T08:00:00-03:00',return_at:'2027-09-27T08:00:00-03:00'}}};
       return route.fulfill({status:200, headers:H, body:JSON.stringify({months: (q.days==='10' && M[q.to+'10']) || M[q.to] || {}})});
     }
-    const P = {GIG:{G3:{price:389,transfers:0,duration:65,origin_airport:'CWB',destination_airport:'GIG',flight_number:'G31460'}, LA:{price:412.5,transfers:1}, AV:{price:350,transfers:1}}, SSA:{AD:{price:612}}, LIS:{TP:{price:3480}}, REC:{G3:{price:701}}};
+    const P = {GIG:{G3:{price:389,transfers:0,duration:65,origin_airport:'CWB',destination_airport:'GIG',flight_number:'G31460'}, LA:{price:412.5,transfers:1,via:['GRU']}, AV:{price:350,transfers:1}}, SSA:{AD:{price:612}}, LIS:{TP:{price:3480}}, REC:{G3:{price:701}}};
     // Recife: o preço encontrado é de 3 dias depois da data pedida
     const depAt = q.to === 'REC' && q.dep ? new Date(Date.parse(q.dep+'T12:00:00Z') + 3*864e5).toISOString().slice(0,10) : (q.dep||'');
     const airlines = Object.fromEntries(Object.entries(P[q.to]||{}).map(([k,v]) => [k, {departure_at:depAt+'T08:00:00-03:00', ...v}]));
@@ -276,6 +276,7 @@ const assert = (c,m) => { console.log((c?'PASS ':'FAIL ')+m); if(!c) process.exi
   const row = await pa.$eval('#cash a.go:nth-child(2)', x => ({tm:x.querySelector('.tm').textContent, c2:x.querySelector('.c2').textContent, c3:x.querySelector('.c3').textContent, low:x.querySelector('.lp').classList.contains('low')}));
   assert(row.tm === '08:00 – 09:05' && /1h 05 min/.test(row.c2) && /CWB–GIG/.test(row.c2) && /voo direto/.test(row.c3) && /G31460/.test(row.c3) && !row.low, 'flight row: departure–arrival, duration, airports, stops, flight number: '+JSON.stringify(row));
   assert(await pa.$eval('#cash a.go .lp', x => x.classList.contains('low')), 'lowest price in green');
+  assert(/1 parada GRU/.test(await pa.textContent('#cash a.go:nth-child(3) .c3')), 'layover airport shown');
   assert(/direto/.test(await pa.textContent('#cash a.go:nth-child(2)')) && /por adulto/.test(await pa.textContent('#cash a.go:nth-child(2)')), 'shows stops and per adult');
   const q1 = apiCalls.find(q => q.from==='CWB' && q.to==='GIG' && q.dep==='2027-01-01');
   assert(q1 && q1.ret==='2027-01-08' && q1.cabin==='economy', 'asks the server for the chosen route and dates');
