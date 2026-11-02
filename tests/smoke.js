@@ -12,7 +12,8 @@ const assert = (c,m) => { console.log((c?'PASS ':'FAIL ')+m); if(!c) process.exi
   await ctx.addInitScript(fixClock('2026-11-02T12:00:00'));
   const p = await ctx.newPage(); const errs=[];
   p.on('pageerror', e => errs.push(e.message));
-  const url='file://'+require("path").resolve(__dirname,"../index.html");
+  // SITE_URL testa o site publicado (ex.: https://adissoncosta.github.io/ADISSONCOSTA/); sem ela, o arquivo local
+  const url=process.env.SITE_URL||'file://'+require("path").resolve(__dirname,"../index.html");
   await p.goto(url); await p.waitForTimeout(300);
   // miles tab: VCP→LIM (5/11) still valid on 02/11; clicking a miles deal sets one-way + date
   await p.click('#tabMiles');

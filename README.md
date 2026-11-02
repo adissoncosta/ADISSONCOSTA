@@ -15,14 +15,14 @@ Abra `index.html` no navegador.
 
 ## Site
 
-O GitHub Actions publica a página no GitHub Pages a cada push:
+O GitHub Pages publica a página a cada push (*Settings → Pages → Deploy from a branch*):
 **https://adissoncosta.github.io/ADISSONCOSTA/**
 
-Para funcionar, o Pages precisa estar ligado uma vez: *Settings → Pages → Build and deployment → Source: GitHub Actions*.
+Depois de cada publicação, o workflow `Site online` roda os testes contra o endereço online no Chromium, Firefox e WebKit (e também uma vez por dia).
 
 ## Testar
 
-Os testes rodam no GitHub Actions nos três motores de navegador a cada push (workflow `Testes e site`):
+Os testes rodam no GitHub Actions nos três motores de navegador a cada push (workflow `Testes`):
 
 | Motor | Navegadores |
 |---|---|
@@ -36,6 +36,7 @@ Para rodar localmente:
 npm install
 npx playwright install chromium firefox webkit
 npm run test:chromium   # ou test:firefox, test:webkit
+SITE_URL=https://adissoncosta.github.io/ADISSONCOSTA/ npm test   # testa o site online
 ```
 
 O teste fixa o relógio em 02/11/2026; atualize as datas das ofertas em `DEALS` quando trocar as promoções.

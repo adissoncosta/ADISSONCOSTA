@@ -1,0 +1,45 @@
+# Depois que o GitHub Pages publica o site, roda os testes contra o endereço online
+# nos três motores de navegador: Chromium (Chrome/Edge), Firefox e WebKit (Safari).
+name: Site online
+
+on:
+  page_build:
+  workflow_dispatch:
+  schedule:
+    - cron: "17 11 * * *"   # todo dia, 08:17 em Brasília
+
+permissions:
+  contents: read
+
+env:
+  SITE_URL: https://adissoncosta.github.io/ADISSONCOSTA/
+
+jobs:
+  online:
+    name: Online (${{ matrix.browser }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        browser: [chromium, firefox, webkit]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Esperar o site responder com a versão deste commit
+        run: |
+          for i in $(seq 1 30); do
+            if curl -fsS "$SITE_URL" -o /tmp/site.html && cmp -s /tmp/site.html index.html; then echo "site atualizado"; exit 0; fi
+            echo "aguardando publicação ($i)"; sleep 20
+          done
+          echo "::warning::o site online ainda não tem a versão deste commit; testando a que está no ar"
+      - name: Instalar Playwright
+        run: npm install --no-audit --no-fund
+      - name: Instalar o navegador
+        run: npx playwright install --with-deps ${{ matrix.browser }}
+      - name: Testar o site online
+        run: node tests/smoke.js
+        env:
+          BROWSER: ${{ matrix.browser }}

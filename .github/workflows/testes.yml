@@ -1,0 +1,41 @@
+# Testa o Radar de Passagens (arquivo local) nos três motores de navegador a cada push.
+# Chromium = Google Chrome e Microsoft Edge · Firefox · WebKit = Safari (Mac e iPhone)
+# O site é publicado pelo próprio GitHub Pages (Deploy from a branch); o teste do site
+# online fica em online.yml.
+name: Testes
+
+on:
+  push:
+    branches: [claude/ticket-sales-promo-app-zplsze, main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: testes-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  testes:
+    name: Testes (${{ matrix.browser }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        browser: [chromium, firefox, webkit]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Instalar Playwright
+        run: npm install --no-audit --no-fund
+      - name: Instalar o navegador
+        run: npx playwright install --with-deps ${{ matrix.browser }}
+      - name: Rodar os testes
+        run: node tests/smoke.js
+        env:
+          BROWSER: ${{ matrix.browser }}
