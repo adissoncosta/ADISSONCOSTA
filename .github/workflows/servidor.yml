@@ -1,0 +1,72 @@
+# Publica o servidor de preços (server/worker.js) no Cloudflare Workers.
+# Precisa de 3 segredos do repositório (Settings → Secrets and variables → Actions):
+#   TRAVELPAYOUTS_TOKEN, CLOUDFLARE_API_TOKEN e CLOUDFLARE_ACCOUNT_ID.
+# Sem eles, só roda os testes do servidor e avisa o que falta.
+name: Servidor de preços
+
+on:
+  push:
+    branches: [claude/ticket-sales-promo-app-zplsze, main]
+    paths: ["server/**", "tests/worker.test.mjs", ".github/workflows/servidor.yml"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  publicar:
+    name: Testar e publicar
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Testes do servidor
+        run: node tests/worker.test.mjs
+      - name: Conferir segredos
+        id: segredos
+        env:
+          TP: ${{ secrets.TRAVELPAYOUTS_TOKEN }}
+          CF: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          ACC: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          faltam=""
+          [ -z "$TP" ] && faltam="$faltam TRAVELPAYOUTS_TOKEN"
+          [ -z "$CF" ] && faltam="$faltam CLOUDFLARE_API_TOKEN"
+          [ -z "$ACC" ] && faltam="$faltam CLOUDFLARE_ACCOUNT_ID"
+          if [ -n "$faltam" ]; then
+            echo "::warning::Servidor não publicado. Faltam os segredos:$faltam (veja o README, seção Preços reais)."
+            echo "ok=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "ok=true" >> "$GITHUB_OUTPUT"
+          fi
+      - name: Publicar no Cloudflare
+        id: deploy
+        if: steps.segredos.outputs.ok == 'true'
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          workingDirectory: server
+          secrets: |
+            TRAVELPAYOUTS_TOKEN
+        env:
+          TRAVELPAYOUTS_TOKEN: ${{ secrets.TRAVELPAYOUTS_TOKEN }}
+      - name: Testar o servidor publicado
+        if: steps.segredos.outputs.ok == 'true'
+        env:
+          URL: ${{ steps.deploy.outputs.deployment-url }}
+        run: |
+          dep=$(date -d '+30 days' +%F); ret=$(date -d '+37 days' +%F)
+          echo "Servidor: $URL"
+          curl -fsS -H "Origin: https://adissoncosta.github.io" "$URL?from=GRU&to=SSA&dep=$dep&ret=$ret" | tee /tmp/r.json
+          echo
+          node -e 'const j=require("/tmp/r.json"); const a=Object.entries(j.airlines||{}).map(([k,v])=>k+" R$ "+v.price); console.log("Companhias com preço ("+j.scope+"):", a.join(", ")||"nenhuma")'
+          {
+            echo "### Servidor de preços publicado"
+            echo "Endereço: \`$URL\`"
+            echo
+            echo "Coloque esse endereço em \`window.RADAR_API\` no index.html."
+          } >> "$GITHUB_STEP_SUMMARY"

@@ -1,0 +1,9 @@
+# Cloudflare Worker do Radar de Passagens. Publicar: npx wrangler deploy (nesta pasta)
+# Token: npx wrangler secret put TRAVELPAYOUTS_TOKEN
+name = "radar-precos"
+main = "worker.js"
+compatibility_date = "2026-10-01"
+
+[vars]
+# Sites que podem chamar o servidor (separados por vírgula). "*" libera todos.
+ALLOWED_ORIGINS = "https://adissoncosta.github.io"

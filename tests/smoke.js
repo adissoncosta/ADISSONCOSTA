@@ -194,5 +194,40 @@ const assert = (c,m) => { console.log((c?'PASS ':'FAIL ')+m); if(!c) process.exi
   const ex2 = await px.$$eval('#exList .fav .info b', a => a.slice(0,2).map(x => x.textContent.trim()));
   assert(/389/.test(ex2[0]) && (await px.inputValue('#exFrom')).includes('CWB'), 'origin and prices remembered after reload: '+ex2);
   assert(errsX.length===0, 'no page errors in explore '+errsX.join(';'));
+  // ---- preços reais pelo servidor (RADAR_API), com a API simulada ----
+  const ctxApi = await b.newContext({viewport:{width:375,height:760}});
+  await ctxApi.addInitScript(fixClock('2026-11-02T12:00:00'));
+  await ctxApi.addInitScript(() => { window.RADAR_API = 'https://precos.test/'; });
+  const apiCalls = [];
+  await ctxApi.route('https://precos.test/**', route => {
+    const q = Object.fromEntries(new URL(route.request().url()).searchParams); apiCalls.push(q);
+    const H = {'Access-Control-Allow-Origin':'*','Content-Type':'application/json'};
+    if(q.to === 'FOR') return route.fulfill({status:502, headers:H, body:JSON.stringify({error:'upstream', message:'Travelpayouts respondeu 500'})});
+    const P = {GIG:{G3:{price:389,transfers:0}, LA:{price:412.5,transfers:1}, AV:{price:350,transfers:1}}, SSA:{AD:{price:612}}, LIS:{TP:{price:3480}}, REC:{G3:{price:701}}};
+    const airlines = Object.fromEntries(Object.entries(P[q.to]||{}).map(([k,v]) => [k, {departure_at:(q.dep||'')+'T08:00:00-03:00', ...v}]));
+    return route.fulfill({status:200, headers:H, body:JSON.stringify({scope: q.to==='REC' ? 'month' : 'date', airlines})});
+  });
+  const pa = await ctxApi.newPage(); const errsA = []; pa.on('pageerror', e => errsA.push(e.message));
+  await pa.goto(url); await pa.waitForTimeout(300);
+  await pa.fill('#from','CWB'); await pa.dispatchEvent('#from','input');
+  await pa.fill('#to','GIG'); await pa.dispatchEvent('#to','input');
+  await pa.fill('#dep','2027-01-01'); await pa.dispatchEvent('#dep','change');
+  await pa.fill('#ret','2027-01-08'); await pa.dispatchEvent('#ret','change');
+  await pa.waitForFunction(() => document.querySelectorAll('#cash .lp:not(.wait)').length >= 3, null, {timeout:8000});
+  const api = await pa.$$eval('#cash a.go', a => a.map(x => x.querySelector('strong').childNodes[0].textContent+':'+((x.querySelector('.lp')||{}).textContent||'')));
+  assert(/^Avianca:R\$\s350$/.test(api[0]) && /^GOL:R\$\s389$/.test(api[1]) && /^LATAM:R\$\s412,50$/.test(api[2]) && /Sem preço recente/.test(api[3]), 'real prices on airline buttons, cheapest first (extra airline added): '+api.join(' | '));
+  assert(await pa.$eval('#cash a.go', x => x.classList.contains('best')), 'cheapest airline highlighted');
+  assert(/direto/.test(await pa.textContent('#cash a.go:nth-child(2)')) && /por adulto/.test(await pa.textContent('#cash a.go:nth-child(2)')), 'shows stops and per adult');
+  const q1 = apiCalls.find(q => q.from==='CWB' && q.to==='GIG' && q.dep==='2027-01-01');
+  assert(q1 && q1.ret==='2027-01-08' && q1.cabin==='economy', 'asks the server for the chosen route and dates');
+  assert(/menores preços encontrados/.test(await pa.textContent('#cashH')), 'heading says prices found');
+  assert(await pa.isHidden('#liveOff'), 'no "open in the Claude app" note when the site has prices');
+  // Para onde vamos viajar? pelo servidor
+  await pa.evaluate(() => scrollTo(0,0));
+  await pa.fill('#exFrom','curitiba'); await pa.dispatchEvent('#exFrom','input'); await pa.keyboard.press('Enter');
+  await pa.waitForFunction(() => !exRun && exData && exData.key.startsWith('CWB|') && Object.keys(exData.prices).length >= 3, null, {timeout:8000});
+  const exA = await pa.$$eval('#exList .fav', a => a.slice(0,4).map(x => x.querySelector('.city').textContent.trim().split(' ')[0]+':'+x.querySelector('.info b').textContent.trim()));
+  assert(/^Rio:R\$\s350$/.test(exA[0]) && /^Salvador:R\$\s612$/.test(exA[1]) && /^Recife:R\$\s701$/.test(exA[2]) && /^Lisboa/.test(exA[3]), 'explore uses the server, cheapest first: '+exA.join(' | '));
+  assert(errsA.length===0, 'no page errors with price server '+errsA.join(';'));
   await b.close();
 })();

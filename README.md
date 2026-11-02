@@ -20,6 +20,22 @@ O GitHub Pages publica a página a cada push (*Settings → Pages → Deploy fro
 
 Depois de cada publicação, o workflow `Site online` roda os testes contra o endereço online no Chromium, Firefox e WebKit (e também uma vez por dia).
 
+## Preços reais (servidor)
+
+Para o site mostrar o preço de cada companhia nos botões de compra e em "Para onde vamos viajar?", ele consulta um servidor próprio (`server/worker.js`, um Cloudflare Worker gratuito). O servidor guarda em segredo o token da [Travelpayouts](https://www.travelpayouts.com/) (API de dados do Aviasales) e devolve o menor preço de cada companhia para o trecho e as datas.
+
+Os preços vêm de buscas recentes feitas por viajantes: podem estar algumas horas defasados, valem por adulto e só existem para a classe econômica. Quando não há preço para a data exata, o servidor devolve o melhor preço do mês da ida, e o site avisa.
+
+**Configurar (uma vez):**
+
+1. **Travelpayouts**: crie uma conta grátis em travelpayouts.com, entre no programa do Aviasales e copie o **API token** (perfil → *API token*).
+2. **Cloudflare**: crie uma conta grátis em cloudflare.com. Em *My Profile → API Tokens → Create Token*, use o modelo **Edit Cloudflare Workers** e copie o token. Copie também o **Account ID** (aparece em *Workers & Pages*, no lado direito).
+3. **GitHub**: em *Settings → Secrets and variables → Actions → New repository secret*, crie `TRAVELPAYOUTS_TOKEN`, `CLOUDFLARE_API_TOKEN` e `CLOUDFLARE_ACCOUNT_ID`.
+4. Em *Actions → Servidor de preços → Run workflow*. O resumo do run mostra o endereço do servidor (ex.: `https://radar-precos.SEU-USUARIO.workers.dev`).
+5. Coloque o endereço em `window.RADAR_API` no começo do `<script>` do `index.html`.
+
+O servidor só aceita chamadas do site (`ALLOWED_ORIGINS` em `server/wrangler.toml`).
+
 ## Testar
 
 Os testes rodam no GitHub Actions nos três motores de navegador a cada push (workflow `Testes`):

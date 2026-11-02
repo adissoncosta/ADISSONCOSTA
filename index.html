@@ -262,6 +262,7 @@ footer{color:var(--muted);font-size:.8rem;max-width:68ch}
 .live p{margin:0;font-size:.85rem;color:var(--muted)}
 .live #liveMsg:empty,.live #liveRes:empty,.live .row:not(:has(button:not([hidden]))){display:none}
 .live #liveMsg{color:var(--ink)}
+.live:not(:has(.lbtn:not([hidden]))):not(:has(#liveOff:not([hidden]))):not(:has(#liveMsg:not(:empty))){display:none}
 .lres{display:grid;gap:8px}
 .flt{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:4px 14px;align-items:center;padding:12px 14px;border:1px solid var(--line);border-radius:10px;background:var(--bg)}
 .flt.best{border-color:var(--good);box-shadow:inset 0 0 0 1px var(--good)}
@@ -429,6 +430,9 @@ footer{color:var(--muted);font-size:.8rem;max-width:68ch}
 
 
 <script>
+// Servidor de preços (server/worker.js publicado no Cloudflare Workers). Com ele, o site mostra o
+// preço real de cada companhia. Vazio: sem preços automáticos fora do app Claude.
+window.RADAR_API = window.RADAR_API || "";
 const AIRPORTS = {
   GRU:"São Paulo · Guarulhos",CGH:"São Paulo · Congonhas",VCP:"Campinas · Viracopos",GIG:"Rio de Janeiro · Galeão",SDU:"Rio de Janeiro · Santos Dumont",
   BSB:"Brasília",CNF:"Belo Horizonte · Confins",SSA:"Salvador",REC:"Recife",FOR:"Fortaleza",NAT:"Natal",MCZ:"Maceió",JPA:"João Pessoa",AJU:"Aracaju",
@@ -771,21 +775,26 @@ function carriersFor(s){
   if(!list.some(al => al.url)) list = [...["LA","G3","AD"].map(id => AIRLINE[id]), ...list];
   return [...list.filter(al => al.url), ...list.filter(al => !al.url)];
 }
+const cashEntry = (al, s) => al.url
+  ? {id:al.id, name:al.name, sub:`Busca preenchida · ${tripTxt(s)}`, url:al.url(s), buy:true}
+  : {id:al.id, name:al.name, sub:"Site oficial · informe o trecho lá", url:al.home, buy:false};
 const tripTxt = s => (s.ret ? "Ida e volta" : "Só ida") + ` · ${s.pax} adulto${s.pax>1?"s":""}`;
 function links(s){
   const cs = carriersFor(s), served = new Set(cs.map(c => c.id));
   return {
     carriers: cs,
-    cash: cs.map(al => al.url
-      ? {name:al.name, sub:`Busca preenchida · ${tripTxt(s)}`, url:al.url(s), buy:true}
-      : {name:al.name, sub:"Site oficial · informe o trecho lá", url:al.home, buy:false}),
+    cash: cs.map(al => cashEntry(al, s)),
     miles: [...MILES].sort((a,b) => served.has(b.id) - served.has(a.id)).map(m => ({name:m.name, sub:m.note, url:m.url(s), buy:true, verb:"Emitir"}))
   };
 }
-const priceLine = c => c.price
+const stopsTxt = n => n == null ? "" : n === 0 ? "voo direto" : n === 1 ? "1 parada" : `${n} paradas`;
+const priceLine = c => c.price && c.price.from === "api"
+  ? `<b class="lp">${brlExact(c.price.v)}</b><span>${c.price.scope === "date" ? "menor preço nessas datas" : `melhor preço em ${MES[+c.price.dep.slice(5,7)-1]}/${c.price.dep.slice(2,4)}, ida ${fmtBR(c.price.dep).slice(0,5)}`}${c.price.stops != null ? " · "+stopsTxt(c.price.stops) : ""} · por adulto</span>`
+  : c.price
   ? `<b class="lp">${brlExact(c.price.v)}</b><span>${c.price.from === "voos" ? "voo mais barato no site" : "menor valor na página do site"}</span>`
   : c.st === "run" ? `<span class="lp wait">Pesquisando preço…</span>`
-  : c.st === "no" ? `<span class="lp none">O site não mostrou preço; toque para ver lá</span>` : "";
+  : c.st === "no" ? `<span class="lp none">O site não mostrou preço; toque para ver lá</span>`
+  : c.st === "noapi" ? `<span class="lp none">Sem preço recente desta companhia; toque para ver no site</span>` : "";
 const card = c => `<a class="go ${c.buy?"buy":"site"}${c.best?" best":""}" href="${esc(c.url)}" target="_blank" rel="noopener"><div><strong class="notranslate" translate="no">${esc(c.name)}${c.best?'<span class="tag2">menor preço</span>':""}</strong><span>${esc(c.sub)}</span>${priceLine(c)}</div><span class="arrow">${c.verb||(c.buy?"Comprar":"Abrir")} →</span></a>`;
 // Preços lidos nos sites das companhias para a busca atual (ficam salvos por 6 horas neste navegador)
 const LP_KEY = "radar-precos", LP_TTL = 6*3600e3;
@@ -793,10 +802,46 @@ const searchKey = s => [s.from,s.to,s.dep,s.ret,s.pax,s.cabin].join("|");
 let livePrices = null;
 try { const j = JSON.parse(localStorage.getItem(LP_KEY)); if(j && j.key && Date.now()-j.at < LP_TTL) livePrices = j; } catch(_) {}
 const saveLivePrices = () => { try { localStorage.setItem(LP_KEY, JSON.stringify({...livePrices, status:{}})); } catch(_) {} };
+// salvo sem status: ao reabrir, companhias sem preço não ficam "pesquisando"
 const hhmm = t => { const d = new Date(t); return `${pad2(d.getHours())}:${pad2(d.getMinutes())}`; };
+// Preços reais pelo servidor (RADAR_API): menor preço de cada companhia para o trecho e as datas
+let apiTimer = null, apiKey = "";
+function apiPrices(s){
+  if(!window.RADAR_API || s.cabin !== "economy") return;
+  const key = searchKey(s);
+  if(key === apiKey) return;
+  if(livePrices && livePrices.key === key && livePrices.src === "api" && Date.now() - livePrices.at < 30*60e3){ apiKey = key; return; }
+  apiKey = key; clearTimeout(apiTimer);
+  const names = links(s).cash.map(c => c.name);
+  livePrices = {key, at:Date.now(), src:"api", prices:{}, codes:[], status:Object.fromEntries(names.map(n => [n,"run"]))};
+  apiTimer = setTimeout(async () => {
+    try{
+      const q = new URLSearchParams({from:s.from, to:s.to, dep:s.dep, ...(s.ret ? {ret:s.ret} : {}), cabin:s.cabin});
+      const r = await fetch(`${window.RADAR_API}?${q}`);
+      const j = await r.json();
+      if(apiKey !== key) return;
+      if(!r.ok) throw new Error(j.message || r.status);
+      const codes = Object.keys(j.airlines || {}).filter(c => AIRLINE[c]);
+      const prices = {};
+      codes.forEach(c => { const a = j.airlines[c]; prices[AIRLINE[c].name] = {v:a.price, from:"api", scope:j.scope, dep:(a.departure_at || s.dep).slice(0,10), stops:a.transfers}; });
+      const status = Object.fromEntries([...names, ...codes.map(c => AIRLINE[c].name)].map(n => [n, prices[n] ? "ok" : "noapi"]));
+      livePrices = {key, at:Date.now(), src:"api", scope:j.scope, prices, codes, status};
+      saveLivePrices();
+    } catch(e){
+      if(apiKey !== key) return;
+      livePrices = {key, at:Date.now(), src:"api", prices:{}, codes:[], status:{}};
+      apiKey = "";  // tenta de novo na próxima mudança
+    }
+    render();
+  }, 350);
+}
 // Ordena os cartões em reais: com preço do menor para o maior, depois os sem preço na ordem original
 function cashCards(s, list){
   const lp = livePrices && livePrices.key === searchKey(s) ? livePrices : null;
+  if(lp && lp.codes){
+    const have = new Set(list.map(c => c.id));
+    list = [...list, ...lp.codes.filter(c => AIRLINE[c] && !have.has(c)).map(c => cashEntry(AIRLINE[c], s))];
+  }
   const cs = list.map((c,i) => ({...c, i, price: lp && lp.prices[c.name] || null, st: lp && lp.status && lp.status[c.name] || ""}));
   if(lp) cs.sort((a,b) => ((a.price ? a.price.v : Infinity) - (b.price ? b.price.v : Infinity)) || a.i - b.i);
   if(cs.filter(c => c.price).length > 1) cs[0].best = true;
@@ -834,7 +879,8 @@ function render(){
   $("summary").textContent = `${s.from} → ${s.to} · ${fmtBR(s.dep)}${s.ret?" a "+fmtBR(s.ret):" (só ida)"} · ${s.pax} adulto${s.pax>1?"s":""} · ${CABIN_PT[s.cabin]}`;
   const {cs, lp} = cashCards(s, L.cash);
   $("cash").innerHTML = cs.map(card).join("");
-  $("cashH").textContent = lp && Object.keys(lp.prices).length ? `Pagando em reais · preços dos sites às ${hhmm(lp.at)}, do menor para o maior` : "Pagando em reais";
+  $("cashH").textContent = lp && Object.keys(lp.prices).length ? `Pagando em reais · ${lp.src === "api" ? "menores preços encontrados" : "preços dos sites"} às ${hhmm(lp.at)}, do menor para o maior` : "Pagando em reais";
+  apiPrices(s);
   $("miles").innerHTML = L.miles.map(card).join("");
   renderFavs();
 }
@@ -1042,7 +1088,7 @@ function exIdleMsg(){
   if(exRun) return;
   if(!exOrigin) return exMsg("");
   if(exData && exData.key === exKey(exOrigin) && Object.keys(exData.prices).length) return exMsg(`Preços de ${hhmm(exData.at)}, do mais barato para o mais caro. Toque num destino para comprar direto na companhia.`);
-  exMsg(exMcp ? "" : "Para o Radar buscar os preços sozinho, abra esta página no app Claude para computador. Aqui, toque num destino para ver as passagens direto nas companhias.");
+  exMsg(exMcp || window.RADAR_API ? "" : "Para o Radar buscar os preços sozinho, abra esta página no app Claude para computador. Aqui, toque num destino para ver as passagens direto nas companhias.");
 }
 function exSetOrigin(c){
   if(!c || c === exOrigin) return;
@@ -1050,11 +1096,12 @@ function exSetOrigin(c){
   renderExplore(); exIdleMsg(); exStart();
 }
 function exStart(){
-  if(!exMcp || !exOrigin) return;
+  if((!exMcp && !window.RADAR_API) || !exOrigin) return;
   if(exRun){ exRun.stop = true; exPending = true; return; }
   exSearch();
 }
 async function exSearch(){
+  if(window.RADAR_API) return exSearchApi();
   const o = exOrigin, {dep, ret} = exDates(), dests = exDests(o);
   exData = {key: exKey(o), at: Date.now(), prices:{}, status: Object.fromEntries(dests.map(z => [z, "run"]))};
   exRun = {stop:false}; $("exGo").disabled = true; $("exStop").hidden = false; renderExplore();
@@ -1091,6 +1138,30 @@ async function exSearch(){
   else if(!found) exMsg("Não apareceram preços agora. Os sites podem ter pedido verificação; tente de novo em instantes ou toque num destino para ver nas companhias.");
   else exMsg(`Pronto: ${found} destinos com preço às ${hhmm(exData.at)}, ida ${fmtBR(dep).slice(0,5)} e volta ${fmtBR(ret).slice(0,5)}, do mais barato para o mais caro. Toque num destino para comprar direto na companhia.`);
 }
+// Mesma busca pelo servidor de preços: os 10 destinos de uma vez
+async function exSearchApi(){
+  const o = exOrigin, {dep, ret} = exDates(), dests = exDests(o);
+  exData = {key: exKey(o), at: Date.now(), prices:{}, status: Object.fromEntries(dests.map(z => [z, "run"]))};
+  exRun = {stop:false}; $("exGo").disabled = true; renderExplore();
+  exMsg(`Procurando as passagens mais baratas saindo de ${cityOf(o)}…`);
+  let found = 0, fail = 0;
+  await Promise.all(dests.map(async z => {
+    try{
+      const r = await fetch(`${window.RADAR_API}?${new URLSearchParams({from:o, to:z, dep, ret, cabin:"economy"})}`);
+      const j = await r.json(); if(!r.ok) throw new Error(j.message);
+      const vs = Object.values(j.airlines || {}).map(a => a.price).filter(v => v > 0);
+      if(exData.key !== exKey(o)) return;
+      exData.status[z] = vs.length ? "ok" : "no"; if(vs.length){ exData.prices[z] = Math.min(...vs); found++; }
+    } catch(e){ fail++; exData.status[z] = ""; }
+    renderExplore();
+  }));
+  exData.at = Date.now();
+  try { localStorage.setItem(EX_KEY, JSON.stringify({...exData, status:{}})); } catch(_) {}
+  exRun = null; $("exGo").disabled = false; renderFavs();
+  if(exPending){ exPending = false; return exSearch(); }
+  exMsg(found ? `Pronto: ${found} destinos com preço às ${hhmm(exData.at)}, ida ${fmtBR(dep).slice(0,5)} e volta ${fmtBR(ret).slice(0,5)}, do mais barato para o mais caro. Toque num destino para comprar direto na companhia.`
+    : fail ? "Não consegui buscar os preços agora. Tente de novo em instantes." : "Ainda não há preços recentes para esses destinos. Toque num destino para ver nas companhias.");
+}
 $("exFrom").addEventListener("change", () => exSetOrigin(codeOf($("exFrom").value)));
 $("exFrom").addEventListener("blur", () => setTimeout(() => { const c = codeOf($("exFrom").value); if(c && c !== exOrigin) exSetOrigin(c); else renderExplore(); }, 160));
 $("exWhen").addEventListener("change", () => { renderExplore(); exIdleMsg(); exStart(); });
@@ -1106,7 +1177,7 @@ $("exList").addEventListener("click", e => {
   try { mcp = window.claude && window.claude.use ? await window.claude.use("mcp") : null; } catch(e) { mcp = null; }
   if(mcp){ try { const r = await mcp.listTools(BROWSER); ok = (r.servers||[]).some(x => x.server === BROWSER); } catch(e) { ok = false; } }
   exMcp = ok ? mcp : null;
-  $("exGo").hidden = !ok;
+  $("exGo").hidden = !ok && !window.RADAR_API;
   exIdleMsg();
 })();
 $("tabCash").onclick=()=>{dealTab="cash";renderDeals();};
@@ -1420,7 +1491,7 @@ let liveRun = null, liveSample = null;
   try { mcp = window.claude && window.claude.use ? await window.claude.use("mcp") : null; } catch(e) { mcp = null; }
   if(mcp){ try { const r = await mcp.listTools(BROWSER); ok = (r.servers||[]).some(x => x.server === BROWSER); } catch(e) { ok = false; } }
   if(ok && !tMcp) tMcp = mcp;
-  $("liveBtn").hidden = !ok; $("liveDesc").hidden = !ok; $("liveOff").hidden = ok;
+  $("liveBtn").hidden = !ok; $("liveDesc").hidden = !ok; $("liveOff").hidden = ok || !!window.RADAR_API;
   try { liveSample = window.claude && window.claude.use ? await window.claude.use("sample") : null; } catch(e) { liveSample = null; }
 })();
 function liveSources(s){
@@ -1518,6 +1589,8 @@ addEventListener("resize", () => { clearTimeout(tResize); tResize = setTimeout((
 })();
 if(!exOrigin) exOrigin = state().from || null;
 exReady = true; renderDeals(); render(); renderFavs(); exIdleMsg(); calc(); renderTrend();
+// com servidor de preços, já busca os destinos mais baratos da origem ao abrir a página
+if(window.RADAR_API && exOrigin && !(exData && exData.key === exKey(exOrigin))) exStart();
 </script>
 </body>
 </html>
