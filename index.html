@@ -103,6 +103,9 @@ a.go .tag2{display:inline-block;font-size:.68rem;font-weight:600;padding:1px 6px
 /* Carrossel de cartões com foto grande: destino e preço à vista */
 .deal-grid,.fav-grid{display:grid;grid-auto-flow:column;grid-auto-columns:min(86%,340px);gap:14px;overflow-x:auto;overscroll-behavior-x:contain;scroll-snap-type:x mandatory;scroll-padding-inline:2px;padding:2px 2px 10px;scrollbar-width:thin}
 .deal,.fav{scroll-snap-align:start}
+.deal-group + .deal-group{margin-top:22px}
+.deal-h{display:flex;align-items:baseline;gap:10px;margin:0 0 10px;font-size:1.15rem;font-weight:700;letter-spacing:-.01em}
+.deal-h span{font-size:.8rem;font-weight:500;color:var(--muted)}
 .deal{background:var(--paper);border:1px solid var(--line);border-radius:22px;overflow:hidden;display:flex;flex-direction:column;min-width:0}
 .pic{position:relative;aspect-ratio:16/11;background:#79B4E3;overflow:hidden}
 .pic svg,.pic img{position:absolute;inset:0;width:100%;height:100%;display:block}
@@ -288,7 +291,7 @@ footer{color:var(--muted);font-size:.8rem;max-width:68ch}
       <button type="button" role="tab" id="tabCash" aria-selected="true">Em reais</button>
       <button type="button" role="tab" id="tabMiles" aria-selected="false">Em milhas</button>
     </div>
-    <div class="deal-grid" id="deals"></div>
+    <div id="deals"></div>
   </section>
 
   <section class="favs" id="favs" aria-labelledby="favsTitle">
@@ -895,7 +898,7 @@ function renderDeals(){
   $("tabMiles").setAttribute("aria-selected",dealTab==="miles");
   const list = activeDeals(dealTab);
   if(!list.length){ $("deals").innerHTML = `<p class="sub" style="margin:0">As ofertas desta aba já venceram. Use a busca abaixo para encontrar os preços de hoje.</p>`; return; }
-  $("deals").innerHTML = list.map((d,i)=>{
+  const dealCard = (d,i) => {
     const [a,z,cab] = d.fill, multi = /^BR\b/.test(d.route);
     const who = d.pts ? PROGRAM[d.pts].name : d.cia ? AIRLINE[d.cia].name : (d.badge === "Nacional" ? "Azul, GOL e LATAM" : "Várias companhias");
     const ini = who.replace(/[^A-Za-zÀ-ú ]/g,"").split(/\s+/).filter(Boolean).slice(0,2).map(w=>w[0]).join("").toUpperCase();
@@ -910,7 +913,15 @@ function renderDeals(){
       <ul><li>${d.info[0]}</li>${d.until===todayYMD?`<li style="color:var(--warn);font-weight:600">Último dia da oferta</li>`:""}</ul>
       <div class="acts">${d.cia||d.pts ? `<button type="button" class="alt" data-i="${i}">Outras companhias</button><a class="buybtn" data-buy="${i}" href="#" target="_blank" rel="noopener">${d.pts ? "Emitir" : "Comprar"} →</a>` : `<button type="button" data-i="${i}">Ver datas →</button>`}</div>
       </div>
-    </article>`; }).join("");
+    </article>`; };
+  // Separa em voos nacionais (origem e destino no Brasil) e internacionais; data-i segue o índice da aba
+  const items = list.map((d,i) => ({d, i, nat: countryOf(d.fill[0]) === "BR" && countryOf(d.fill[1]) === "BR"}));
+  $("deals").innerHTML = [["nat","Voos nacionais",true],["int","Voos internacionais",false]].map(([id,title,nat]) => {
+    const g = items.filter(x => x.nat === nat);
+    return `<div class="deal-group" id="deals-${id}"><h3 class="deal-h">${title}<span>${g.length} ${g.length===1?"oferta":"ofertas"}</span></h3>`
+      + (g.length ? `<div class="deal-grid">${g.map(x => dealCard(x.d, x.i)).join("")}</div>` : `<p class="sub" style="margin:0">Nenhuma promoção ${nat?"nacional":"internacional"} ${dealTab==="cash"?"em reais":"em milhas"} no momento.</p>`)
+      + `</div>`;
+  }).join("");
 }
 // ---- Para onde vamos viajar? Destinos mais baratos a partir da origem ----
 const EX_DESTS = ["GIG","SSA","LIS","REC","EZE","FOR","MCO","FLN","SCL","NAT","GRU","MIA","MCZ","CUN","IGU","CDG"];

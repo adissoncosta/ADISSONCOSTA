@@ -14,11 +14,17 @@ const assert = (c,m) => { console.log((c?'PASS ':'FAIL ')+m); if(!c) process.exi
   await p.click('#tabMiles');
   const titles = await p.$$eval('.deal h3', a=>a.map(x=>x.textContent));
   assert(titles.length===6, 'miles deals shown: '+titles.length);
+  const grp = async () => p.evaluate(() => ['nat','int'].map(id => [...document.querySelectorAll('#deals-'+id+' .deal')].map(x => x.querySelector('.city').textContent.trim().split(' ')[0]).join(',')));
+  let gm = await grp();
+  assert(gm[0]==='Recife' && gm[1].split(',').length===5, 'miles deals split national/international: '+gm.join(' / '));
   await p.click('.deal button[data-i="1"]');
   let st = await p.evaluate(()=>({from:from.value,to:to.value,dep:dep.value,ow:ow.getAttribute('aria-pressed'),ret:ret.disabled,sum:summary.textContent}));
   assert(st.from==='FLN'&&st.to==='AEP'&&st.dep==='2026-12-15'&&st.ow==='true'&&st.ret, 'miles deal fills one-way + date: '+st.sum);
   // cash deal returns to round trip
-  await p.click('#tabCash'); await p.click('.deal button[data-i="3"]');
+  await p.click('#tabCash');
+  gm = await grp();
+  assert(gm[0]==='Salvador,Porto,Foz' && gm[1].split(',').length===5 && !/Salvador|Porto|Foz/.test(gm[1]), 'cash deals split national/international: '+gm.join(' / '));
+  await p.click('.deal button[data-i="3"]');
   st = await p.evaluate(()=>({rt:rt.getAttribute('aria-pressed'),sum:summary.textContent}));
   assert(st.rt==='true', 'cash deal sets round trip: '+st.sum);
   // last-day badge on CWB→POA (until 2026-11-02 == today)
