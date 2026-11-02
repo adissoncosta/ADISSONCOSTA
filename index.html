@@ -862,7 +862,11 @@ function setupCombo(id){
   // Seleciona o texto ao focar, para digitar por cima. O Safari desfaz a seleção ao soltar o
   // clique/toque, então seleciona de novo depois e ignora esse primeiro mouseup.
   let justFocused = false;
-  inp.addEventListener("focus", () => { justFocused = true; inp.select(); setTimeout(() => { if(document.activeElement === inp) inp.select(); }, 0); });
+  inp.addEventListener("focus", () => {
+    justFocused = true; inp.select();
+    const v = inp.value;  // só seleciona de novo se a pessoa ainda não começou a digitar
+    setTimeout(() => { if(document.activeElement === inp && inp.value === v) inp.select(); }, 0);
+  });
   inp.addEventListener("mouseup", e => { if(justFocused){ e.preventDefault(); justFocused = false; } });
   inp.addEventListener("blur", () => { justFocused = false; });
   inp.addEventListener("keydown", e => {
