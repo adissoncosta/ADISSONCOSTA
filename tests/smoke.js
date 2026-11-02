@@ -239,7 +239,7 @@ const assert = (c,m) => { console.log((c?'PASS ':'FAIL ')+m); if(!c) process.exi
     if(q.to === 'FOR') return route.fulfill({status:502, headers:H, body:JSON.stringify({error:'upstream', message:'Travelpayouts respondeu 500'})});
     if('ofertas' in q) return route.fulfill({status:200, headers:H, body:JSON.stringify({at:'2026-11-02T11:55:00Z',
       campaigns:[{name:'Anoiteceu Azul', url:'https://passagens.voeazul.com.br/pt/anoiteceu', price:'R$ 219,90', points:'8.000 pontos', cond:'No cartão Azul Itau. Consulte condições.', when:'É só essa noite, das 18h às 23h59!',
-        fares: Array.from({length:12}, (_,i) => ({from: i < 8 ? 'GRU' : 'CNF', to: ['GIG','CWB','POA','FLN','REC','SSA','BSB','FOR','CGH','BSB','POA','REC'][i], fromName: i < 8 ? 'São Paulo' : 'Belo Horizonte', toName:'x', price: 214.53 + i*10, dep:'2027-03-04', ret:'', oneWay:true, seen:'3 horas atrás'}))}],
+        fares: Array.from({length:12}, (_,i) => ({from: i === 1 ? 'CGH' : i < 8 ? 'GRU' : 'CNF', to: ['GIG','CWB','POA','FLN','REC','SSA','BSB','FOR','CGH','BSB','POA','REC'][i], fromName: i < 8 ? 'São Paulo' : 'Belo Horizonte', toName:'x', price: 214.53 + i*10, dep:'2027-03-04', ret:'', oneWay:true, seen:'3 horas atrás'}))}],
       cash:[{source:'azul', campaign:'Anoiteceu Azul', url:'https://passagens.voeazul.com.br/pt/anoiteceu', from:'GRU', to:'GIG', fromName:'São Paulo', toName:'Rio de Janeiro', price:214.53, dep:'2027-03-04', ret:'', oneWay:true, seen:'3 horas atrás', airline:'AD'},
             {source:'azul', campaign:'Anoiteceu Azul', url:'https://passagens.voeazul.com.br/pt/anoiteceu', from:'MCP', to:'BEL', fromName:'Macapá', toName:'Belém', price:240.92, dep:'2027-04-29', ret:'', oneWay:true, seen:'1 dia atrás', airline:'AD'},
             {source:'md', title:'Santa Catarina bem barato! Passagens para Florianópolis a partir de R$ 278 ida e volta', url:'https://www.melhoresdestinos.com.br/promocao/sc', pub:'Mon, 02 Nov 2026 09:00:00 +0000', from:'POA', to:'FLN', price:278, roundTrip:true, airline:'AD'},
@@ -306,7 +306,9 @@ const assert = (c,m) => { console.log((c?'PASS ':'FAIL ')+m); if(!c) process.exi
   const camp = await pa.evaluate(() => ({vis: !document.getElementById('camp').hidden, h: (document.querySelector('#camp h2')||{}).textContent||'', clock: (document.querySelector('#camp .clock')||{}).textContent||'', rows: document.querySelectorAll('#camp .camp-list li').length, first: (document.querySelector('#camp .camp-list li')||{}).textContent||'', href: (document.querySelector('#camp .camp-list a')||{}).href||'', more: (document.getElementById('campAll')||{}).textContent||''}));
   assert(camp.vis && /Anoiteceu Azul: os melhores preços da Azul/.test(camp.h) && /termina em 4h/.test(camp.clock), 'live campaign section shown during its hours, with countdown: '+camp.h+' / '+camp.clock);
   assert(camp.rows === 9 && /São Paulo → Rio de Janeiro/.test(camp.first) && /R\$\s214,53/.test(camp.first) && /voeazul.*c\[0\]\.ds=GRU.*c\[0\]\.as=GIG/.test(camp.href) && /Ver todos \(12\)/.test(camp.more), 'best campaign prices listed cheapest first, with Azul buy link: '+camp.first.replace(/\s+/g,' ').slice(0,90));
-  await pa.click('#camp [data-o="CNF"]');
+  const chips = await pa.$$eval('#camp [data-o]', a => a.map(x => x.textContent));
+  assert(chips.join('|') === 'Todas as saídas|São Paulo|Belo Horizonte', 'one origin chip per city (GRU+CGH = São Paulo): '+chips.join('|'));
+  await pa.click('#camp [data-o="Belo Horizonte"]');
   const campF = await pa.$$eval('#camp .camp-list .rt', a => a.map(x => x.textContent));
   assert(campF.length === 4 && campF.every(t => /^Belo Horizonte/.test(t)), 'filter by departure city: '+campF.join(' | '));
   await pa.click('#camp [data-o=""]'); await pa.click('#campAll');

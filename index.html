@@ -1442,17 +1442,18 @@ function renderCamp(){
   const box = $("camp"), c = activeCamp();
   if(!c || !c.fares || !c.fares.length){ box.hidden = true; box.innerHTML = ""; return; }
   box.hidden = false;
-  const origins = [...new Set(c.fares.map(f => f.from))];
-  const name = code => (AIRPORTS[code] || "").split(" · ")[0] || code;
-  if(campOrigin && !origins.includes(campOrigin)) campOrigin = "";
-  const list = c.fares.filter(f => !campOrigin || f.from === campOrigin);
-  const shown = campAll ? list : list.slice(0, 9);
   c.fares.forEach(f => { if(f.fromName && !AIRPORTS[f.from]) AIRPORTS[f.from] = f.fromName; if(f.toName && !AIRPORTS[f.to]) AIRPORTS[f.to] = f.toName; });
+  const name = code => (AIRPORTS[code] || "").split(" · ")[0] || code;
+  // One chip per city: São Paulo groups GRU, CGH and SAO fares.
+  const origins = [...new Set(c.fares.map(f => name(f.from)))];
+  if(campOrigin && !origins.includes(campOrigin)) campOrigin = "";
+  const list = c.fares.filter(f => !campOrigin || name(f.from) === campOrigin);
+  const shown = campAll ? list : list.slice(0, 9);
   const buy = f => AIRLINE.AD.url({from:f.from, to:f.to, dep:f.dep, ret:f.oneWay ? "" : f.ret, pax:1, cabin:"economy"});
   box.innerHTML = `<div class="camp-top"><span class="dot">Ao vivo agora</span><span class="clock">${leftTxt(campLeft(c))}</span></div>
     <h2 id="campTitle">${esc(c.name)}: os melhores preços da Azul</h2>
     <p class="lead">Passagens a partir de <b>${esc(c.price)}</b>${c.points ? " ou <b>"+esc(c.points)+"</b>" : ""}. ${esc([c.cond, c.when].filter(Boolean).join(" "))}</p>
-    ${origins.length > 1 ? `<div class="chips-o" role="group" aria-label="Saindo de"><button type="button" data-o="" aria-pressed="${!campOrigin}">Todas as saídas</button>${origins.map(o => `<button type="button" data-o="${o}" aria-pressed="${campOrigin===o}">${esc(name(o))}</button>`).join("")}</div>` : ""}
+    ${origins.length > 1 ? `<div class="chips-o" role="group" aria-label="Saindo de"><button type="button" data-o="" aria-pressed="${!campOrigin}">Todas as saídas</button>${origins.map(o => `<button type="button" data-o="${esc(o)}" aria-pressed="${campOrigin===o}">${esc(o)}</button>`).join("")}</div>` : ""}
     <ul class="camp-list">${shown.map((f,i) => `<li class="${i===0?"top":""}"><span class="rt" translate="no">${esc(name(f.from))} → ${esc(name(f.to))}</span><span class="dt">ida ${fmtBR(f.dep)}${f.ret && !f.oneWay ? " · volta "+fmtBR(f.ret).slice(0,5) : ""} · ${f.oneWay ? "só ida" : "ida e volta"}${f.seen ? " · visto há "+esc(f.seen.replace(/\s*atrás$/,"")) : ""}</span><span class="pr">${brlExact(f.price)}<small>por adulto</small></span><a href="${esc(buy(f))}" target="_blank" rel="noopener">Comprar na Azul →</a></li>`).join("")}</ul>
     <div class="camp-foot"><span>${list.length} ${list.length===1?"trecho":"trechos"} com preço na página oficial da Azul, do menor para o maior. Confirme o valor no site antes de pagar.</span><span>${list.length > 9 ? `<button type="button" id="campAll">${campAll ? "Mostrar menos" : `Ver todos (${list.length})`}</button> ` : ""}<a class="sec" href="${esc(c.url)}" target="_blank" rel="noopener">Abrir a campanha →</a></span></div>`;
 }
