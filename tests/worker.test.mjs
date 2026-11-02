@@ -25,6 +25,12 @@ calls = [];
 r = await prices(env, { from: "CWB", to: "GIG", dep: "2027-01-01", ret: "" }, fake(q => q.departure_at === "2027-01" ? [{ airline: "G3", price: 210 }] : []));
 assert(r.scope === "month" && r.airlines.G3.price === 210 && calls[1].departure_at === "2027-01" && calls[1].one_way === "true" && !("return_at" in calls[1]), "falls back to the departure month (one way)");
 
+calls = [];
+r = await prices(env, { from: "CWB", to: "GIG", dep: "2027-01-01", ret: "2027-01-08" }, fake(q => q.destination === "RIO" ? [{ airline: "G3", price: 450 }] : []));
+assert(calls.length === 3 && calls[2].origin === "CWB" && calls[2].destination === "RIO" && calls[2].departure_at === "2027-01" && r.airlines.G3.price === 450 && r.scope === "month", "then tries the city code (GIG -> RIO)");
+calls = [];
+await prices(env, { from: "CWB", to: "FOR", dep: "2027-01-01", ret: "2027-01-08" }, fake(() => []));
+assert(calls.length === 2, "no city retry for single-airport cities");
 // 12 meses, preferindo duração próxima da escolhida
 calls = [];
 const m = await months(env, { from: "GRU", to: "LIS", days: 10 }, new Date("2026-11-02T12:00:00Z"), fake(q => q.departure_at === "2026-12" ? [

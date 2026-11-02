@@ -6,6 +6,10 @@ const assert = (c,m) => { console.log((c?'PASS ':'FAIL ')+m); if(!c) process.exi
 (async () => {
   console.log('Navegador: '+BROWSER);
   const b = await engine.launch();
+  // Por padrão a página roda sem servidor de preços (resultados previsíveis); o bloco do
+  // servidor simulado liga um endereço próprio depois deste script.
+  const newContext = b.newContext.bind(b);
+  b.newContext = async (...args) => { const c = await newContext(...args); await c.addInitScript(() => { if(!('RADAR_API' in window)) window.RADAR_API = ''; }); return c; };
   const ctx = await b.newContext({viewport:{width:375,height:760}});
   // Relógio fixo para o teste não depender da data real
   const fixClock = iso => `(()=>{const R=Date,t=new R('${iso}').getTime();Date=class extends R{constructor(...a){super(...(a.length?a:[t]))}static now(){return t}}})()`;

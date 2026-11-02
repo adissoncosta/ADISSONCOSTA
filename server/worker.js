@@ -14,6 +14,8 @@ const CACHE_SECONDS = 1800;
 // Códigos que a Travelpayouts usa para empresas do mesmo grupo
 const AIRLINE_ALIAS = { JJ: "LA", "4M": "LA", XL: "LA", LP: "LA", "4C": "LA", PZ: "LA" };
 const IATA = /^[A-Z]{3}$/, DAY = /^\d{4}-\d{2}-\d{2}$/;
+// Código da cidade de aeroportos de cidades com mais de um aeroporto (a fonte tem mais dados por cidade)
+const CITY = { GRU: "SAO", CGH: "SAO", VCP: "SAO", GIG: "RIO", SDU: "RIO", JFK: "NYC", EWR: "NYC", EZE: "BUE", AEP: "BUE", NRT: "TYO", HND: "TYO" };
 
 function cors(env, req) {
   const allowed = (env.ALLOWED_ORIGINS || "*").split(",").map(s => s.trim()).filter(Boolean);
@@ -54,10 +56,17 @@ export async function prices(env, p, fetchImpl = fetch) {
   const base = { origin: p.from, destination: p.to, one_way: String(oneWay) };
   let scope = "date";
   let rows = await tp(env, { ...base, departure_at: p.dep, ...(oneWay ? {} : { return_at: p.ret }) }, fetchImpl);
+  const month = { departure_at: p.dep.slice(0, 7), ...(oneWay ? {} : { return_at: p.ret.slice(0, 7) }) };
   if (!rows.length) {
     // nenhuma busca recente nessas datas exatas: melhor preço no mês da ida (e da volta)
     scope = "month";
-    rows = await tp(env, { ...base, departure_at: p.dep.slice(0, 7), ...(oneWay ? {} : { return_at: p.ret.slice(0, 7) }) }, fetchImpl);
+    rows = await tp(env, { ...base, ...month }, fetchImpl);
+  }
+  const cf = CITY[p.from] || p.from, ct = CITY[p.to] || p.to;
+  if (!rows.length && (cf !== p.from || ct !== p.to)) {
+    // ainda nada: tenta pela cidade (ex.: RIO = Galeão + Santos Dumont)
+    scope = "month";
+    rows = await tp(env, { ...base, origin: cf, destination: ct, ...month }, fetchImpl);
   }
   return { from: p.from, to: p.to, dep: p.dep, ret: p.ret || "", scope, currency: "BRL", at: new Date().toISOString(), airlines: cheapestByAirline(rows) };
 }

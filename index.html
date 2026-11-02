@@ -431,8 +431,8 @@ footer{color:var(--muted);font-size:.8rem;max-width:68ch}
 
 <script>
 // Servidor de preços (server/worker.js publicado no Cloudflare Workers). Com ele, o site mostra o
-// preço real de cada companhia. Vazio: sem preços automáticos fora do app Claude.
-window.RADAR_API = window.RADAR_API || "";
+// preço real de cada companhia. Vazio (""): sem preços automáticos fora do app Claude.
+window.RADAR_API = window.RADAR_API ?? "https://radar-precos.adissoncosta-17.workers.dev/";
 const AIRPORTS = {
   GRU:"São Paulo · Guarulhos",CGH:"São Paulo · Congonhas",VCP:"Campinas · Viracopos",GIG:"Rio de Janeiro · Galeão",SDU:"Rio de Janeiro · Santos Dumont",
   BSB:"Brasília",CNF:"Belo Horizonte · Confins",SSA:"Salvador",REC:"Recife",FOR:"Fortaleza",NAT:"Natal",MCZ:"Maceió",JPA:"João Pessoa",AJU:"Aracaju",
