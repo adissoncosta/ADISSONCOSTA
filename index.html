@@ -358,7 +358,7 @@ footer{color:var(--muted);font-size:.8rem;max-width:68ch}
         <ul class="sugg" id="exFromList" role="listbox" aria-label="Cidades de partida" hidden></ul>
       </div>
       <select id="exWhen" aria-label="Quando">
-        <option value="14">Em 2 semanas</option><option value="30" selected>Em 1 mês</option><option value="60">Em 2 meses</option><option value="90">Em 3 meses</option>
+        <option value="year" selected>Próximos 12 meses</option><option value="14">Em 2 semanas</option><option value="30">Em 1 mês</option><option value="60">Em 2 meses</option><option value="90">Em 3 meses</option>
       </select>
     </div>
     <div class="ex-acts"><button type="button" id="exGo" hidden>Buscar preços agora</button><button type="button" id="exStop" hidden>Parar</button></div>
@@ -1065,7 +1065,7 @@ function renderDeals(){
 }
 // ---- Para onde vamos viajar? Destinos mais baratos a partir da origem ----
 const EX_DESTS = ["GIG","SSA","LIS","REC","EZE","FOR","MCO","FLN","SCL","NAT","GRU","MIA","MCZ","CUN","IGU","CDG"];
-const EX_KEY = "radar-explorar-2", EX_ORIG = "radar-origem";
+const EX_KEY = "radar-explorar-3", EX_ORIG = "radar-origem";
 let exOrigin = null, exData = null, exRun = null, exPending = false, exMcp = null, exReady = false;
 try { const o = localStorage.getItem(EX_ORIG); if(AIRPORTS[o]) exOrigin = o; } catch(_) {}
 try { const j = JSON.parse(localStorage.getItem(EX_KEY)); if(j && j.key && Date.now()-j.at < LP_TTL) exData = j; } catch(_) {}
@@ -1125,14 +1125,19 @@ $("saveFav").onclick = () => {
   else addFav(s.from, s.to);
 };
 const exDests = o => EX_DESTS.filter(z => z !== o && cityOf(z) !== cityOf(o)).slice(0, 10);
-const exDates = () => { const dep = addDays(ymd(today), +$("exWhen").value); return {dep, ret: addDays(dep, 7)}; };
-const exKey = o => { const d = exDates(); return `${o}|${d.dep}|${d.ret}`; };
+// "Próximos 12 meses" (padrão, com servidor de preços): o mais barato do ano em cada destino.
+// Sem servidor, ou numa data fixa: ida daqui a N dias e volta 7 dias depois.
+const exYear = () => $("exWhen").value === "year" && !!window.RADAR_API;
+const exDates = () => { const n = $("exWhen").value === "year" ? 30 : +$("exWhen").value, dep = addDays(ymd(today), n); return {dep, ret: addDays(dep, 7)}; };
+const exKey = o => { if(exYear()) return `${o}|ano|${ymd(today).slice(0,7)}`; const d = exDates(); return `${o}|${d.dep}|${d.ret}`; };
+const dmyy = d => `${d.slice(8,10)}/${d.slice(5,7)}/${d.slice(2,4)}`;
 const dealNum = t => +String(t).replace(/[^\d]/g, "");
 function exPriceOf(o, z){
   const mine = exData && exData.key === exKey(o);
   if(mine && exData.prices[z]){
     const m = exData.meta && exData.meta[z];
     // preço do mês (outra data): diz a data em que ele vale
+    if(m && m.scope === "year") return {v: exData.prices[z], txt: brlExact(exData.prices[z]), line: `mais barato do ano · ida ${dmyy(m.dep)}${m.ret ? " · volta "+fmtBR(m.ret).slice(0,5) : ""}`};
     if(m && m.scope === "month") return {v: exData.prices[z], txt: brlExact(exData.prices[z]), note: `melhor de ${MES[+m.dep.slice(5,7)-1]}/${m.dep.slice(2,4)}`, dep: m.dep};
     return {v: exData.prices[z], txt: brlExact(exData.prices[z]), note: "ida e volta, 1 adulto"};
   }
@@ -1154,7 +1159,7 @@ function renderExplore(){
     const fav = isFav(o, z);
     return `<article class="fav${z===best?" best":""}"><button type="button" class="go" data-ex="${z}" aria-label="Ver passagens de ${esc(cityOf(o))} para ${esc(cityOf(z))}">
       ${photoBlock(z, {orig: cityOf(o), flag: flagFor(z)})}
-      <div class="info">${p && p.v ? `<b>${p.txt}</b><span>${p.note === "em promoção" ? "em promoção · ver datas" : `${p.note} · ida ${fmtBR(p.dep || dep).slice(0,5)}`}</span>` : `<b class="wait">${p ? p.wait : "Toque para ver os preços"}</b><span>${o} → ${z} · ida ${fmtBR(dep).slice(0,5)}, volta ${fmtBR(ret).slice(0,5)}</span>`}</div>
+      <div class="info">${p && p.v ? `<b>${p.txt}</b><span>${p.line ? p.line : p.note === "em promoção" ? "em promoção · ver datas" : `${p.note} · ida ${fmtBR(p.dep || dep).slice(0,5)}`}</span>` : `<b class="wait">${p ? p.wait : "Toque para ver os preços"}</b><span>${o} → ${z} · ${exYear() ? "próximos 12 meses" : `ida ${fmtBR(dep).slice(0,5)}, volta ${fmtBR(ret).slice(0,5)}`}</span>`}</div>
     </button>${z===best?'<span class="best-tag">mais barato</span>':""}<button type="button" class="rm star" data-star="${z}" aria-pressed="${fav}" aria-label="${fav?"Remover das":"Salvar nas"} rotas salvas">${fav?"★":"☆"}</button></article>`;
   }).join("");
   // Só troca o HTML quando algo mudou, para não perder um toque em andamento
@@ -1221,16 +1226,20 @@ async function exSearchApi(){
   const o = exOrigin, {dep, ret} = exDates(), dests = exDests(o);
   exData = {key: exKey(o), at: Date.now(), prices:{}, status: Object.fromEntries(dests.map(z => [z, "run"]))};
   exRun = {stop:false}; $("exGo").disabled = true; renderExplore();
-  exMsg(`Procurando as passagens mais baratas saindo de ${cityOf(o)}…`);
+  exMsg(`Procurando as passagens mais baratas saindo de ${cityOf(o)}${exYear() ? " nos próximos 12 meses" : ""}…`);
   let found = 0, fail = 0;
+  const year = exYear();
   await Promise.all(dests.map(async z => {
     try{
-      const r = await fetch(`${window.RADAR_API}?${new URLSearchParams({from:o, to:z, dep, ret, cabin:"economy"})}`);
+      // ano: menor preço de cada um dos próximos 12 meses (viagem de cerca de 7 dias); data fixa: as datas escolhidas
+      const q = year ? {from:o, to:z, days:7} : {from:o, to:z, dep, ret, cabin:"economy"};
+      const r = await fetch(`${window.RADAR_API}?${new URLSearchParams(q)}`);
       const j = await r.json(); if(!r.ok) throw new Error(j.message);
-      const best = Object.values(j.airlines || {}).filter(a => a.price > 0).sort((a,b) => a.price - b.price)[0];
+      const list = year ? Object.values(j.months || {}).map(m => ({...m, scope:"year"})) : Object.values(j.airlines || {}).map(a => ({...a, scope:j.scope}));
+      const best = list.filter(a => a.price > 0).sort((a,b) => a.price - b.price)[0];
       if(exData.key !== exKey(o)) return;
       exData.status[z] = best ? "ok" : "no";
-      if(best){ exData.prices[z] = best.price; (exData.meta = exData.meta || {})[z] = {scope:j.scope, dep:(best.departure_at || dep).slice(0,10)}; found++; }
+      if(best){ exData.prices[z] = best.price; (exData.meta = exData.meta || {})[z] = {scope:best.scope, dep:(best.departure_at || dep).slice(0,10), ret:(best.return_at || "").slice(0,10)}; found++; }
     } catch(e){ fail++; exData.status[z] = ""; }
     renderExplore();
   }));
@@ -1238,7 +1247,9 @@ async function exSearchApi(){
   try { localStorage.setItem(EX_KEY, JSON.stringify({...exData, status:{}})); } catch(_) {}
   exRun = null; $("exGo").disabled = false; renderFavs();
   if(exPending){ exPending = false; return exSearch(); }
-  exMsg(found ? `Pronto: ${found} destinos com preço às ${hhmm(exData.at)}, ida ${fmtBR(dep).slice(0,5)} e volta ${fmtBR(ret).slice(0,5)}, do mais barato para o mais caro. Toque num destino para comprar direto na companhia.`
+  exMsg(found ? (year
+      ? `Pronto: ${found} destinos com preço nos próximos 12 meses (pesquisa às ${hhmm(exData.at)}), do mais barato para o mais caro. Cada cartão mostra a data da passagem mais barata; toque para comprar direto na companhia.`
+      : `Pronto: ${found} destinos com preço às ${hhmm(exData.at)}, ida ${fmtBR(dep).slice(0,5)} e volta ${fmtBR(ret).slice(0,5)}, do mais barato para o mais caro. Toque num destino para comprar direto na companhia.`)
     : fail ? "Não consegui buscar os preços agora. Tente de novo em instantes." : "Ainda não há preços recentes para esses destinos. Toque num destino para ver nas companhias.");
 }
 $("exFrom").addEventListener("change", () => exSetOrigin(codeOf($("exFrom").value)));
@@ -1249,7 +1260,12 @@ $("exStop").onclick = () => { if(exRun){ exRun.stop = true; exPending = false; e
 $("exList").addEventListener("click", e => {
   const st = e.target.closest("[data-star]");
   if(st){ const z = st.dataset.star; if(isFav(exOrigin, z)){ favs = favs.filter(r => !(r.from === exOrigin && r.to === z)); saveFavs(); renderFavs(); } else addFav(exOrigin, z); return; }
-  const g = e.target.closest("[data-ex]"); if(g){ const {dep, ret} = exDates(); goRoute(exOrigin, g.dataset.ex, dep, ret); }
+  const g = e.target.closest("[data-ex]");
+  if(g){
+    const z = g.dataset.ex, m = exData && exData.key === exKey(exOrigin) && exData.meta && exData.meta[z];
+    const d = exDates(), dep = m && m.dep >= ymd(today) ? m.dep : d.dep, ret = m && m.ret > dep ? m.ret : addDays(dep, 7);
+    goRoute(exOrigin, z, dep, ret);
+  }
 });
 (async () => {
   let ok = false, mcp = null;

@@ -234,6 +234,12 @@ const assert = (c,m) => { console.log((c?'PASS ':'FAIL ')+m); if(!c) process.exi
     const q = Object.fromEntries(new URL(route.request().url()).searchParams); apiCalls.push(q);
     const H = {'Access-Control-Allow-Origin':'*','Content-Type':'application/json'};
     if(q.to === 'FOR') return route.fulfill({status:502, headers:H, body:JSON.stringify({error:'upstream', message:'Travelpayouts respondeu 500'})});
+    if(q.days){ // modo 12 meses: menor preço de cada mês
+      const M = {GIG:{'2026-12':{price:350,airline:'G3',departure_at:'2026-12-05T08:00:00-03:00',return_at:'2026-12-12T08:00:00-03:00'},'2027-03':{price:299,airline:'G3',departure_at:'2027-03-14T08:00:00-03:00',return_at:'2027-03-21T08:00:00-03:00'}},
+                 SSA:{'2027-05':{price:540,airline:'AD',departure_at:'2027-05-02T08:00:00-03:00',return_at:'2027-05-09T08:00:00-03:00'}},
+                 LIS:{'2027-09':{price:2990,airline:'TP',departure_at:'2027-09-20T08:00:00-03:00',return_at:'2027-09-27T08:00:00-03:00'}}};
+      return route.fulfill({status:200, headers:H, body:JSON.stringify({months: M[q.to] || {}})});
+    }
     const P = {GIG:{G3:{price:389,transfers:0}, LA:{price:412.5,transfers:1}, AV:{price:350,transfers:1}}, SSA:{AD:{price:612}}, LIS:{TP:{price:3480}}, REC:{G3:{price:701}}};
     const airlines = Object.fromEntries(Object.entries(P[q.to]||{}).map(([k,v]) => [k, {departure_at:(q.dep||'')+'T08:00:00-03:00', ...v}]));
     return route.fulfill({status:200, headers:H, body:JSON.stringify({scope: q.to==='REC' ? 'month' : 'date', airlines})});
@@ -256,9 +262,22 @@ const assert = (c,m) => { console.log((c?'PASS ':'FAIL ')+m); if(!c) process.exi
   // Para onde vamos viajar? pelo servidor
   await pa.evaluate(() => scrollTo(0,0));
   await pa.fill('#exFrom','curitiba'); await pa.dispatchEvent('#exFrom','input'); await pa.keyboard.press('Enter');
-  await pa.waitForFunction(() => !exRun && exData && exData.key.startsWith('CWB|') && Object.keys(exData.prices).length >= 3, null, {timeout:8000});
+  // padrão: próximos 12 meses
+  await pa.waitForFunction(() => !exRun && exData && exData.key.startsWith('CWB|ano') && Object.keys(exData.prices).length >= 3, null, {timeout:8000});
+  const exY = await pa.$$eval('#exList .fav', a => a.slice(0,3).map(x => x.querySelector('.city').textContent.trim().split(' ')[0]+':'+x.querySelector('.info b').textContent.trim()+':'+x.querySelector('.info span').textContent.trim()));
+  assert(/^Rio:R\$\s299:mais barato do ano · ida 14\/03\/27 · volta 21\/03$/.test(exY[0]) && /^Salvador:R\$\s540:.*02\/05\/27/.test(exY[1]) && /^Lisboa:R\$\s2\.990/.test(exY[2]), 'explore finds the cheapest of the next 12 months, with its date: '+exY.join(' | '));
+  const qy = apiCalls.find(q => q.from==='CWB' && q.to==='GIG' && q.days);
+  assert(qy && qy.days==='7' && !qy.dep, 'year mode asks the server for 12 months');
+  assert(/próximos 12 meses/.test(await pa.textContent('#exMsg')), 'message says next 12 months: '+await pa.textContent('#exMsg'));
+  await pa.click('#exList .fav button[data-ex="GIG"]');
+  const fy = await pa.evaluate(() => [from.value,to.value,dep.value,ret.value].join(' '));
+  assert(fy==='CWB GIG 2027-03-14 2027-03-21', 'tapping fills the search with the cheapest dates: '+fy);
+  // data fixa continua disponível
+  await pa.evaluate(() => scrollTo(0,0));
+  await pa.selectOption('#exWhen','30');
+  await pa.waitForFunction(() => !exRun && exData && exData.key.startsWith('CWB|2026-12-02') && Object.keys(exData.prices).length >= 3, null, {timeout:8000});
   const exA = await pa.$$eval('#exList .fav', a => a.slice(0,4).map(x => x.querySelector('.city').textContent.trim().split(' ')[0]+':'+x.querySelector('.info b').textContent.trim()));
-  assert(/^Rio:R\$\s350$/.test(exA[0]) && /^Salvador:R\$\s612$/.test(exA[1]) && /^Recife:R\$\s701$/.test(exA[2]) && /^Lisboa/.test(exA[3]), 'explore uses the server, cheapest first: '+exA.join(' | '));
+  assert(/^Rio:R\$\s350$/.test(exA[0]) && /^Salvador:R\$\s612$/.test(exA[1]) && /^Recife:R\$\s701$/.test(exA[2]) && /^Lisboa/.test(exA[3]), 'fixed date still works, cheapest first: '+exA.join(' | '));
   const recNote = await pa.$$eval('#exList .fav', a => (a.find(x => /Recife/.test(x.querySelector('.city').textContent))||{}).textContent||'');
   assert(/melhor de nov\/26 · ida 02\/11/.test(recNote) || /melhor de dez\/26/.test(recNote), 'month-scope destination price says which month/date: '+recNote.replace(/\s+/g,' ').trim().slice(-60));
   assert(errsA.length===0, 'no page errors with price server '+errsA.join(';'));

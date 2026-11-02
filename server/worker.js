@@ -77,7 +77,14 @@ export async function months(env, p, now = new Date(), fetchImpl = fetch) {
     return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, "0")}`;
   });
   const oneWay = !(p.days > 0);
-  const res = await Promise.all(keys.map(k => tp(env, { origin: p.from, destination: p.to, departure_at: k, one_way: String(oneWay), limit: "50" }, fetchImpl).catch(() => [])));
+  const cf = CITY[p.from] || p.from, ct = CITY[p.to] || p.to, byCity = cf !== p.from || ct !== p.to;
+  const res = await Promise.all(keys.map(async k => {
+    const q = { departure_at: k, one_way: String(oneWay), limit: "50" };
+    let rows = await tp(env, { origin: p.from, destination: p.to, ...q }, fetchImpl).catch(() => []);
+    // mês sem dados para o par de aeroportos: tenta pela cidade (ex.: GIG -> RIO)
+    if (!rows.length && byCity) rows = await tp(env, { origin: cf, destination: ct, ...q }, fetchImpl).catch(() => []);
+    return rows;
+  }));
   const out = {};
   res.forEach((rows, i) => {
     // com volta, prefere viagens com duração próxima à escolhida (±3 dias)

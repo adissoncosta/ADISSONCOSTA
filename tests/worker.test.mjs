@@ -36,9 +36,13 @@ calls = [];
 const m = await months(env, { from: "GRU", to: "LIS", days: 10 }, new Date("2026-11-02T12:00:00Z"), fake(q => q.departure_at === "2026-12" ? [
   { airline: "TP", price: 2900, departure_at: "2026-12-05T10:00:00Z", return_at: "2026-12-07T10:00:00Z" },
   { airline: "LA", price: 3400, departure_at: "2026-12-05T10:00:00Z", return_at: "2026-12-15T10:00:00Z" }] : []));
-assert(calls.length === 12 && calls[0].departure_at === "2026-11" && calls[11].departure_at === "2027-10", "asks the next 12 months");
+const byAirport = calls.filter(q => q.origin === "GRU");
+assert(byAirport.length === 12 && byAirport[0].departure_at === "2026-11" && byAirport[11].departure_at === "2027-10", "asks the next 12 months");
 assert(m.months["2026-12"].price === 3400 && m.months["2026-12"].airline === "LA" && Object.keys(m.months).length === 1, "month price prefers trips near the chosen length: " + JSON.stringify(m.months));
 
+calls = [];
+const mc = await months(env, { from: "MAO", to: "GIG", days: 7 }, new Date("2026-11-02T12:00:00Z"), fake(q => q.destination === "RIO" && q.departure_at === "2027-02" ? [{ airline: "AD", price: 1500, departure_at: "2027-02-02T10:00:00Z", return_at: "2027-02-09T10:00:00Z" }] : []));
+assert(calls.length === 24 && mc.months["2027-02"].price === 1500, "12-month view also retries by city code (" + calls.length + " calls)");
 // validação
 assert(parse(new URL("https://x/?from=cwb&to=gig&dep=2027-01-01&ret=2027-01-08")).mode === "prices", "parses price query (lowercase codes ok)");
 assert(parse(new URL("https://x/?from=CWB&to=CWB&dep=2027-01-01")).error === "bad_route", "rejects same origin and destination");
