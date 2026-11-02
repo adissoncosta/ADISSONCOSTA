@@ -9,6 +9,8 @@ Página única (HTML/CSS/JS, sem dependências) para achar passagens aéreas pro
 - **Preço ao longo do ano** – anote o menor preço de cada mês e veja o gráfico (salvo no navegador).
 - **Milhas ou dinheiro?** – calculadora do valor do milheiro.
 
+- **Celular, tablet e computador** – a página se ajusta sozinha à largura da tela (de 320px a monitores grandes): no celular, carrosséis de deslizar com o dedo e alvos de toque de 44px; no computador, mais largura, mais cartões por vez e setas ‹ › nos carrosséis. Dá para instalar como app ("Adicionar à tela inicial" no celular, "Instalar" no Chrome/Edge do computador).
+
 ## Rodar
 
 Abra `index.html` no navegador.

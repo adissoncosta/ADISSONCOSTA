@@ -198,6 +198,33 @@ const assert = (c,m) => { console.log((c?'PASS ':'FAIL ')+m); if(!c) process.exi
   const ex2 = await px.$$eval('#exList .fav .info b', a => a.slice(0,2).map(x => x.textContent.trim()));
   assert(/389/.test(ex2[0]) && (await px.inputValue('#exFrom')).includes('CWB'), 'origin and prices remembered after reload: '+ex2);
   assert(errsX.length===0, 'no page errors in explore '+errsX.join(';'));
+  // ---- ajuste automático à tela: do celular de 320px ao monitor ----
+  for(const [w,h] of [[320,640],[375,812],[414,896],[768,1024],[1366,768],[1920,1080]]){
+    const cr = await b.newContext({viewport:{width:w,height:h}}); await cr.addInitScript(fixClock('2026-11-02T12:00:00'));
+    const pr = await cr.newPage(); await pr.goto(url); await pr.waitForTimeout(300);
+    const m = await pr.evaluate(() => ({sw: document.documentElement.scrollWidth, vw: innerWidth, wrap: Math.round(document.querySelector('.wrap').getBoundingClientRect().width)}));
+    assert(m.sw <= m.vw, `no horizontal page scroll at ${w}px (página ${m.sw}px, conteúdo ${m.wrap}px)`);
+    if(w >= 1366){
+      assert(m.wrap >= 1100, `wide screens use more width at ${w}px: ${m.wrap}px`);
+      const nav = await pr.$('#deals-int .cnav');
+      assert(nav && await nav.isVisible(), 'carousel arrows shown for mouse users');
+      const before = await pr.$eval('#deals-int .deal-grid', g => g.scrollLeft);
+      await pr.click('#deals-int .cnav button[data-d="1"]'); await pr.waitForTimeout(700);
+      const after = await pr.$eval('#deals-int .deal-grid', g => g.scrollLeft);
+      assert(after > before, `arrow scrolls the carousel (${before} → ${after})`);
+    }
+    if(w === 320){
+      const ex = await pr.evaluate(() => { const i = document.querySelector('.ex-from').getBoundingClientRect(), s = document.getElementById('exWhen').getBoundingClientRect(); return i.width >= 280 && s.top >= i.bottom; });
+      assert(ex, 'narrow phones: departure field full width, "Quando" below it');
+    }
+    await cr.close();
+  }
+  // instalável: manifesto e ícones
+  const man = await p.evaluate(async () => { const l = document.querySelector('link[rel=manifest]'); if(!l) return null; try{ const j = await (await fetch(l.href)).json(); return j; } catch(e){ return 'erro: '+e.message; } });
+  if(url.startsWith('file:')){
+    const j = JSON.parse(require('fs').readFileSync(require('path').resolve(__dirname,'../manifest.webmanifest'),'utf8'));
+    assert(j.icons.length >= 2 && j.icons.every(i => require('fs').existsSync(require('path').resolve(__dirname,'..',i.src))), 'manifest icons exist');
+  } else assert(man && man.name === 'Radar de Passagens' && man.icons.length >= 2, 'manifest served online: '+JSON.stringify(man).slice(0,80));
   // ---- preços reais pelo servidor (RADAR_API), com a API simulada ----
   const ctxApi = await b.newContext({viewport:{width:375,height:760}});
   await ctxApi.addInitScript(fixClock('2026-11-02T12:00:00'));

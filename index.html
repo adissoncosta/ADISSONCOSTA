@@ -5,6 +5,16 @@
 <meta name="google" content="notranslate">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>Radar de Passagens</title>
+<meta name="description" content="Promoções de passagens aéreas saindo do Brasil, preços por companhia e compra direto no site da LATAM, GOL, Azul e outras.">
+<meta name="theme-color" content="#E9EEF2" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#0E1823" media="(prefers-color-scheme: dark)">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Radar">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" type="image/png" sizes="32x32" href="img/favicon-32.png">
+<link rel="apple-touch-icon" href="img/apple-touch-icon.png">
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@500;600&display=swap">
@@ -233,6 +243,47 @@ figure.dest figcaption span{font-size:.82rem;opacity:.9}
 .auto #tAutoMsg{color:var(--ink)}
 .sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
 @media (max-width:520px){.tgrid{grid-template-columns:1fr}.tswap{justify-self:end;transform:rotate(90deg)}}
+
+/* ---- Ajuste automático à tela: celular, tablet, notebook e monitor ---- */
+.chart-empty{margin:0;padding:28px 16px;text-align:center;font-size:.9rem;color:var(--muted);background:var(--bg);border:1px dashed var(--line);border-radius:10px}
+.deal .price{font-size:clamp(1.8rem,8vw,2.3rem)}
+/* as seções nunca passam da largura da tela (os carrosséis rolam por dentro) */
+.wrap > *,.deal-group,.results,.favs{min-width:0}
+/* setas dos carrosséis, para quem usa mouse */
+.cnav{display:flex;justify-content:flex-end;gap:8px;margin:-6px 0 8px}
+.cnav button{width:38px;height:38px;border-radius:50%;border:1px solid var(--line);background:var(--paper);color:var(--ink);cursor:pointer;display:grid;place-items:center;font-size:1.1rem;line-height:1}
+.cnav button:hover:not(:disabled){border-color:var(--accent);color:var(--accent)}
+.cnav button:disabled{opacity:.35;cursor:default}
+@media (hover:none){ .cnav{display:none} }
+@media (pointer:coarse){
+  .cnav{display:none}
+  /* alvos de toque com pelo menos 44px */
+  .tabs button,.trip button,.savefav,.tacts button,.tacts a.sec{min-height:44px}
+  .mo input{min-height:44px}
+  .mo-l a{display:inline-block;padding:10px 6px 10px 0}
+  .fav .rm{width:40px;height:40px}
+  .credits summary{padding:12px 0}
+  /* letra de 16px nos campos: o iPhone não dá zoom ao tocar */
+  .field input,.field select,.mo input,.calc input,#exWhen,.ex-from input{font-size:16px}
+}
+/* celulares estreitos */
+@media (max-width:420px){
+  .ex-bar{grid-template-columns:1fr}
+  #exWhen{max-width:none;min-height:48px}
+  .deal .acts{gap:6px}
+  .deal .acts button,.deal .acts a{padding:11px 16px}
+  .deal .acts button.alt{padding:9px 12px}
+}
+/* telas largas: usa mais espaço e mostra mais cartões por vez */
+@media (min-width:1100px){
+  .wrap{max-width:1180px;gap:34px}
+  .deal-grid{grid-auto-columns:340px}
+  .ex-grid{grid-auto-columns:250px}
+  .pass-bottom{grid-template-columns:repeat(4,minmax(0,1fr))}
+}
+@media (min-width:1500px){
+  .wrap{max-width:1360px}
+}
 
 /* Calculadora */
 .calc{background:var(--paper);border:1px solid var(--line);border-radius:14px;padding:20px}
@@ -960,6 +1011,26 @@ function photoBlock(z, o){
     + (ph ? `<span class="credit" title="${esc(ph.name)} · ${esc(ph.credit)}">${esc(ph.name)} · ${esc(ph.credit)}</span>` : "")
     + `</div>`;
 }
+// Setas ‹ › em cada carrossel para quem usa mouse; somem quando tudo cabe na tela
+function carouselNav(){
+  document.querySelectorAll(".deal-grid, .fav-grid").forEach(g => {
+    let nav = g.previousElementSibling;
+    if(!nav || !nav.classList.contains("cnav")){
+      nav = document.createElement("div"); nav.className = "cnav";
+      nav.innerHTML = `<button type="button" data-d="-1" aria-label="Ver anteriores">‹</button><button type="button" data-d="1" aria-label="Ver próximos">›</button>`;
+      nav.addEventListener("click", e => { const b = e.target.closest("button"); if(b) g.scrollBy({left: +b.dataset.d * g.clientWidth * .9, behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth"}); });
+      g.addEventListener("scroll", () => update(), {passive:true});
+      g.before(nav);
+    }
+    const update = () => {
+      const [prev, next] = nav.children, max = g.scrollWidth - g.clientWidth;
+      nav.hidden = max <= 4 || g.hidden || !g.children.length;
+      prev.disabled = g.scrollLeft <= 4; next.disabled = g.scrollLeft >= max - 4;
+    };
+    g._cnav = update; update();
+  });
+}
+addEventListener("resize", () => document.querySelectorAll(".deal-grid, .fav-grid").forEach(g => g._cnav && g._cnav()));
 function renderDeals(){
   $("tabCash").setAttribute("aria-selected",dealTab==="cash");
   $("tabMiles").setAttribute("aria-selected",dealTab==="miles");
@@ -990,6 +1061,7 @@ function renderDeals(){
       + (g.length ? `<div class="deal-grid">${g.map(x => dealCard(x.d, x.i)).join("")}</div>` : `<p class="sub" style="margin:0">Nenhuma promoção ${nat?"nacional":"internacional"} ${dealTab==="cash"?"em reais":"em milhas"} no momento.</p>`)
       + `</div>`;
   }).join("");
+  carouselNav();
 }
 // ---- Para onde vamos viajar? Destinos mais baratos a partir da origem ----
 const EX_DESTS = ["GIG","SSA","LIS","REC","EZE","FOR","MCO","FLN","SCL","NAT","GRU","MIA","MCZ","CUN","IGU","CDG"];
@@ -1023,6 +1095,7 @@ function renderFavs(){
       <div class="info">${pr ? `<b>${pr.txt}</b><span>${pr.note} · ${r.from} → ${r.to}</span>` : `<b>${r.from} → ${r.to}</b><span>Toque para ver os preços</span>`}</div>
     </button><button type="button" class="rm" data-rm="${i}" aria-label="Remover ${esc(cityOf(r.from))} para ${esc(cityOf(r.to))}">×</button></article>`;
   }).join("");
+  carouselNav();
   const s = state(), on = s.from && s.to && isFav(s.from, s.to);
   $("saveFav").setAttribute("aria-pressed", !!on);
   $("saveFav").textContent = on ? "★ Nas suas rotas" : "☆ Salvar nas minhas rotas";
@@ -1085,7 +1158,7 @@ function renderExplore(){
     </button>${z===best?'<span class="best-tag">mais barato</span>':""}<button type="button" class="rm star" data-star="${z}" aria-pressed="${fav}" aria-label="${fav?"Remover das":"Salvar nas"} rotas salvas">${fav?"★":"☆"}</button></article>`;
   }).join("");
   // Só troca o HTML quando algo mudou, para não perder um toque em andamento
-  if(html !== exListHTML){ exListHTML = html; $("exList").innerHTML = html; }
+  if(html !== exListHTML){ exListHTML = html; $("exList").innerHTML = html; carouselNav(); }
 }
 let exListHTML = "";
 const exMsg = t => { $("exMsg").textContent = t; };
@@ -1294,7 +1367,7 @@ function drawTrend(s, months, saved, deal){
   const box = $("tChart");
   const label = s.days ? `ida e volta, ${s.days} dias` : "só ida";
   if(!have.length){
-    box.innerHTML = `<svg viewBox="0 0 ${W} 120" role="img" aria-label="Gráfico vazio"><rect x="0" y="0" width="${W}" height="120" rx="10" fill="var(--bg)" stroke="var(--line)" stroke-dasharray="4 4"/><text class="empty" x="${W/2}" y="64" text-anchor="middle">Anote o preço de pelo menos um mês abaixo para ver a variação de ${s.from} → ${s.to} (${label}).</text></svg>`;
+    box.innerHTML = `<p class="chart-empty">Anote o preço de pelo menos um mês abaixo para ver a variação de ${s.from} → ${s.to} (${label}).</p>`;
     $("tSum").textContent = "";
     return;
   }
