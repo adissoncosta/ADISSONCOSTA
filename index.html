@@ -1305,7 +1305,7 @@ function liveDeal(o){
   }
   const pub = Date.parse(o.pub || "");
   return {route:`${o.from || "BR"} → ${o.to}`, title:o.title, price, unit:o.roundTrip ? "ida e volta" : "a partir de",
-    info:[`Melhores Destinos${pub ? " · publicada " + agoTxt(pub) : ""}`], badge:nat ? "Nacional" : "Internacional", fill:[o.from || "GRU", o.to, "economy"], ...air,
+    info:[`Melhores Destinos${pub ? " · publicada " + agoTxt(pub) : ""}`], badge:nat ? "Nacional" : "Internacional", fill:[o.from || (o.to === "GRU" || o.to === "CGH" ? "GIG" : "GRU"), o.to, "economy"], ...air,
     age: pub ? agoTxt(pub) : "", src:o.url, live:true, n:o.price};
 }
 function liveBanner(cs){

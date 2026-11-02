@@ -190,18 +190,22 @@ export async function offers(env, fetchImpl = fetch, now = new Date()) {
     if (page.campaign.price || page.fares.length) campaigns.push(page.campaign);
     const byDest = new Set();
     for (const f of page.fares.sort((a, b) => a.price - b.price)) {
-      if (byDest.has(f.to) || byDest.size >= 8) continue;
-      byDest.add(f.to);
+      const to = CITY_MAIN[f.to] || f.to, city = CITY[to] || to;  // Congonhas e Guarulhos contam como São Paulo
+      if (byDest.has(city) || byDest.size >= 8) continue;
+      byDest.add(city);
       cash.push({ source: "azul", campaign: page.campaign.name, url: page.campaign.url, from: CITY_MAIN[f.from] || f.from, to: CITY_MAIN[f.to] || f.to,
         fromName: f.fromName, toName: f.toName, price: f.price, dep: f.dep, ret: f.ret, oneWay: f.trip === "Só ida", seen: f.seen, airline: "AD" });
     }
   }
   // Melhores Destinos: promoções dos últimos 3 dias com preço e destino; companhia mais barata pelo Aviasales
   const recent = md.map(parseMdItem).filter(d => d && (!d.pub || now - Date.parse(d.pub) < 3 * 864e5)).slice(0, 6);
-  const month = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 1)).toISOString().slice(0, 7);
+  const monthsAhead = [1, 2, 3].map(i => new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + i, 1)).toISOString().slice(0, 7));
   await Promise.all(recent.map(async d => {
-    if (!d.airline && env.TRAVELPAYOUTS_TOKEN) {
-      const rows = await tp(env, { origin: CITY[d.from] || (d.from ? d.from : "SAO"), destination: CITY[d.to] || d.to, departure_at: month, one_way: "false", limit: "30" }, fetchImpl).catch(() => []);
+    // companhia mais barata do trecho nos próximos meses (para mostrar uma só, a do menor preço)
+    const origin = CITY[d.from] || d.from || (d.to === "GRU" || d.to === "CGH" ? "RIO" : "SAO");
+    for (const month of monthsAhead) {
+      if (d.airline || !env.TRAVELPAYOUTS_TOKEN) break;
+      const rows = await tp(env, { origin, destination: CITY[d.to] || d.to, departure_at: month, one_way: "false", limit: "30" }, fetchImpl).catch(() => []);
       const best = rows.filter(r => r.price > 0 && r.airline).sort((a, b) => a.price - b.price)[0];
       if (best) d.airline = AIRLINE_ALIAS[best.airline] || best.airline;
     }
