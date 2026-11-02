@@ -2,8 +2,9 @@
 """Baixa fotos reais dos pontos turísticos (Wikimedia Commons, licenças livres)
 e grava em img/<CHAVE>.jpg, atualizando o bloco PHOTOS dentro de index.html.
 
-Uso:  python3 scripts/fetch_photos.py            (baixa só as que faltam)
+Uso:  python3 scripts/fetch_photos.py            (baixa só as fotos e logotipos que faltam)
       python3 scripts/fetch_photos.py --force    (baixa todas de novo)
+      python3 scripts/fetch_photos.py --logos    (só os logotipos das companhias)
 Requer acesso a en.wikipedia.org, commons.wikimedia.org e upload.wikimedia.org.
 """
 import io, json, re, sys, time, html, subprocess, urllib.parse, pathlib
@@ -64,6 +65,14 @@ def fetch(url, timeout=30):
         wait = min(15 * 2 ** attempt, 300)
         print(f"  limite de taxa ({code}), aguardando {wait}s", flush=True); time.sleep(wait)
 
+# código da companhia no site -> (artigo da Wikipédia em inglês, nome mostrado)
+LOGOS = {
+  "LA": ("LATAM Airlines Group", "LATAM"),
+  "G3": ("Gol Linhas Aéreas Inteligentes", "GOL"),
+  "AD": ("Azul Brazilian Airlines", "Azul"),
+  "TP": ("TAP Air Portugal", "TAP Air Portugal"),
+}
+
 def get_json(url):
     time.sleep(0.5)  # ritmo gentil com a API da Wikimedia
     return json.loads(fetch(url))
@@ -114,11 +123,56 @@ def main(force=False):
             print(f"{k}: ok ({fname})", flush=True)
     manifest_path.write_text(json.dumps(manifest, ensure_ascii=False, indent=1, sort_keys=True))
     # Copia o manifesto para dentro do index.html (a página não pode carregar scripts externos)
-    page = (ROOT / "index.html").read_text()
-    block = "const PHOTOS = " + json.dumps(manifest, ensure_ascii=False, sort_keys=True) + ";"
-    page = re.sub(r"const PHOTOS = \{.*?\};", lambda _: block, page, count=1, flags=re.S)
-    (ROOT / "index.html").write_text(page)
+    inject("PHOTOS", manifest)
     print(f"{len(manifest)} fotos no manifesto")
 
+def inject(name, data):
+    """Copia um manifesto para dentro do index.html (a página não pode carregar JSON externo)."""
+    page = (ROOT / "index.html").read_text()
+    block = f"const {name} = " + json.dumps(data, ensure_ascii=False, sort_keys=True) + ";"
+    page = re.sub(rf"const {name} = \{{.*?\}};", lambda _: block, page, count=1, flags=re.S)
+    (ROOT / "index.html").write_text(page)
+
+def logos(force=False):
+    """Logotipos das companhias: imagem principal do artigo da Wikipédia. Muitos logotipos são
+    arquivos locais da Wikipédia em inglês (uso não livre), por isso a consulta vai à API da en.wikipedia."""
+    IMG.mkdir(exist_ok=True)
+    manifest_path = IMG / "logos.json"
+    manifest = json.loads(manifest_path.read_text()) if manifest_path.exists() else {}
+    todo = {k: v for k, v in LOGOS.items() if force or k not in manifest or not (IMG / f"logo-{k}.png").exists()}
+    if todo:
+        q = get_json("https://en.wikipedia.org/w/api.php?" + urllib.parse.urlencode({
+            "action": "query", "format": "json", "redirects": 1, "prop": "pageimages",
+            "piprop": "name", "titles": "|".join(t for t, _ in todo.values())}))["query"]
+        alias = {n["from"]: n["to"] for n in q.get("normalized", []) + q.get("redirects", [])}
+        files = {p["title"]: p.get("pageimage") for p in q["pages"].values()}
+        for k, (title, name) in todo.items():
+            fname = files.get(alias.get(alias.get(title, title), alias.get(title, title)))
+            if not fname:
+                print(f"logo {k}: sem imagem para '{title}'"); continue
+            info = get_json("https://en.wikipedia.org/w/api.php?" + urllib.parse.urlencode({
+                "action": "query", "format": "json", "prop": "imageinfo", "titles": "File:" + fname,
+                "iiprop": "url|extmetadata", "iiurlwidth": 250}))["query"]["pages"]
+            ii = next(iter(info.values())).get("imageinfo", [{}])[0]
+            if not ii.get("thumburl"):
+                print(f"logo {k}: sem miniatura para {fname}"); continue
+            im = Image.open(io.BytesIO(fetch(ii["thumburl"], timeout=60))).convert("RGBA")
+            im.thumbnail((240, 120))
+            im.save(IMG / f"logo-{k}.png", "PNG", optimize=True)
+            meta = ii.get("extmetadata", {})
+            manifest[k] = {"n": name,
+                "a": strip_html(meta.get("Artist", {}).get("value")) or name,
+                "l": strip_html(meta.get("LicenseShortName", {}).get("value")) or "ver página",
+                "u": ii.get("descriptionurl", "")}
+            manifest_path.write_text(json.dumps(manifest, ensure_ascii=False, indent=1, sort_keys=True))
+            print(f"logo {k}: ok ({fname})", flush=True)
+            time.sleep(8)
+    manifest_path.write_text(json.dumps(manifest, ensure_ascii=False, indent=1, sort_keys=True))
+    inject("LOGOS", manifest)
+    print(f"{len(manifest)} logotipos no manifesto")
+
 if __name__ == "__main__":
-    main(force="--force" in sys.argv)
+    force = "--force" in sys.argv
+    if "--logos" not in sys.argv:
+        main(force=force)
+    logos(force=force)
