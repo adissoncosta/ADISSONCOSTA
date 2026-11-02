@@ -6,7 +6,7 @@ Uso:  python3 scripts/fetch_photos.py            (baixa só as que faltam)
       python3 scripts/fetch_photos.py --force    (baixa todas de novo)
 Requer acesso a en.wikipedia.org, commons.wikimedia.org e upload.wikimedia.org.
 """
-import io, json, re, sys, time, html, urllib.error, urllib.parse, urllib.request, pathlib
+import io, json, re, sys, time, html, subprocess, urllib.parse, pathlib
 from PIL import Image
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
@@ -19,24 +19,24 @@ LANDMARKS = {
   "MAD": ("Puerta de Alcalá", "Puerta de Alcalá"), "BCN": ("Sagrada Família", "Sagrada Família"),
   "CDG": ("Eiffel Tower", "Torre Eiffel"), "FCO": ("Colosseum", "Coliseu"),
   "MXP": ("Milan Cathedral", "Duomo de Milão"), "LHR": ("Big Ben", "Big Ben"),
-  "FRA": ("Römer (Frankfurt)", "Römer, Frankfurt"), "AMS": ("Canals of Amsterdam", "Canais de Amsterdã"),
+  "FRA": ("Römer", "Römer, Frankfurt"), "AMS": ("Canals of Amsterdam", "Canais de Amsterdã"),
   "ZRH": ("Grossmünster", "Grossmünster, Zurique"), "BRU": ("Grand-Place", "Grand-Place"),
   "MIA": ("South Beach", "South Beach, Miami"), "MCO": ("Cinderella Castle", "Magic Kingdom, Orlando"),
   "NYC": ("Statue of Liberty", "Estátua da Liberdade"), "LAX": ("Hollywood Sign", "Letreiro de Hollywood"),
-  "ATL": ("Centennial Olympic Park", "Centennial Olympic Park, Atlanta"), "IAH": ("Space Center Houston", "Space Center Houston"),
-  "DFW": ("Reunion Tower", "Reunion Tower, Dallas"), "YYZ": ("CN Tower", "CN Tower"),
+  "ATL": ("Atlanta", "Atlanta"), "IAH": ("Space Center Houston", "Space Center Houston"),
+  "DFW": ("Reunion Tower", "Reunion Tower, Dallas"), "YYZ": ("Toronto", "Toronto e a CN Tower"),
   "BUE": ("Obelisco de Buenos Aires", "Obelisco"), "SCL": ("Gran Torre Santiago", "Santiago e os Andes"),
-  "CJC": ("Valle de la Luna (Chile)", "Vale da Lua, Atacama"), "MVD": ("Palacio Salvo", "Palacio Salvo"),
+  "CJC": ("Valle de la Luna (Chile)", "Vale da Lua, Atacama"), "MVD": ("Plaza Independencia", "Plaza Independencia, Montevidéu"),
   "LIM": ("Machu Picchu", "Machu Picchu"), "BOG": ("Monserrate", "Monserrate"),
-  "PTY": ("Panama Canal", "Canal do Panamá"), "CUN": ("Chichen Itza", "Chichén Itzá"),
+  "PTY": ("Panama Canal expansion project", "Canal do Panamá"), "CUN": ("Chichen Itza", "Chichén Itzá"),
   "MEX": ("Angel of Independence", "Anjo da Independência"), "ASU": ("Palacio de los López", "Palacio de los López"),
-  "DXB": ("Burj Khalifa", "Burj Khalifa"), "DOH": ("Museum of Islamic Art, Doha", "Museu de Arte Islâmica, Doha"),
+  "DXB": ("Burj Khalifa", "Burj Khalifa"), "DOH": ("Doha", "Doha"),
   "IST": ("Sultan Ahmed Mosque", "Mesquita Azul"), "JNB": ("Nelson Mandela Bridge", "Ponte Nelson Mandela"),
-  "TYO": ("Mount Fuji", "Monte Fuji"), "ICN": ("N Seoul Tower", "N Seoul Tower"), "BKK": ("Wat Arun", "Wat Arun"),
+  "TYO": ("Mount Fuji", "Monte Fuji"), "ICN": ("Namsan", "Namsan e N Seoul Tower"), "BKK": ("Wat Arun", "Wat Arun"),
   "RIO": ("Sugarloaf Mountain", "Pão de Açúcar"), "SAO": ("Paulista Avenue", "Avenida Paulista"),
-  "BSB": ("National Congress of Brazil", "Congresso Nacional"), "SSA": ("Lacerda Elevator", "Elevador Lacerda"),
-  "REC": ("Marco Zero (Recife)", "Marco Zero, Recife"), "FOR": ("Iracema Beach", "Praia de Iracema"),
-  "NAT": ("Ponta Negra Beach (Natal)", "Ponta Negra, Natal"), "MCZ": ("Pajuçara", "Pajuçara, Maceió"),
+  "BSB": ("Palácio do Congresso Nacional", "Congresso Nacional"), "SSA": ("Lacerda Elevator", "Elevador Lacerda"),
+  "REC": ("Recife Antigo", "Recife Antigo"), "FOR": ("Fortaleza", "Fortaleza"),
+  "NAT": ("Ponta Negra", "Ponta Negra, Natal"), "MCZ": ("Pajuçara", "Pajuçara, Maceió"),
   "JPA": ("Cabo Branco Lighthouse", "Farol do Cabo Branco"), "FEN": ("Fernando de Noronha", "Fernando de Noronha"),
   "IGU": ("Iguazu Falls", "Cataratas do Iguaçu"), "BPS": ("Porto Seguro", "Porto Seguro"),
   "MAO": ("Amazon Theatre", "Teatro Amazonas"), "FLN": ("Hercílio Luz Bridge", "Ponte Hercílio Luz"),
@@ -50,19 +50,22 @@ LANDMARKS = {
 }
 
 def fetch(url, timeout=30):
-    """GET com novas tentativas quando a Wikimedia limita a taxa (HTTP 429/503)."""
-    for attempt in range(6):
-        try:
-            with urllib.request.urlopen(urllib.request.Request(url, headers=UA), timeout=timeout) as r:
-                return r.read()
-        except urllib.error.HTTPError as e:
-            if e.code not in (429, 503) or attempt == 5:
-                raise
-            wait = int(e.headers.get("Retry-After") or 0) or 10 * 2 ** attempt
-            wait = min(wait, 120)
-            print(f"  limite de taxa ({e.code}), aguardando {wait}s", flush=True); time.sleep(wait)
+    """GET via curl (a Wikimedia limita bem mais o urllib do Python), com novas
+    tentativas quando a taxa é limitada (HTTP 429/503)."""
+    for attempt in range(10):
+        r = subprocess.run(["curl", "-sS", "-L", "--max-time", str(timeout), "-A", UA["User-Agent"],
+                            "-w", "\n%{http_code}", url], capture_output=True)
+        body, _, code = r.stdout.rpartition(b"\n")
+        code = int(code or 0)
+        if r.returncode == 0 and code == 200:
+            return body
+        if code not in (429, 503) or attempt == 9:
+            raise RuntimeError(f"HTTP {code} em {url}: {r.stderr.decode()[:200]}")
+        wait = min(15 * 2 ** attempt, 300)
+        print(f"  limite de taxa ({code}), aguardando {wait}s", flush=True); time.sleep(wait)
 
 def get_json(url):
+    time.sleep(0.5)  # ritmo gentil com a API da Wikimedia
     return json.loads(fetch(url))
 
 def strip_html(s):
@@ -90,7 +93,7 @@ def main(force=False):
                 print(f"{k}: sem imagem para '{t}'"); continue
             info = get_json("https://commons.wikimedia.org/w/api.php?" + urllib.parse.urlencode({
                 "action": "query", "format": "json", "prop": "imageinfo", "titles": "File:" + fname,
-                "iiprop": "url|extmetadata", "iiurlwidth": 900}))["query"]["pages"]
+                "iiprop": "url|extmetadata", "iiurlwidth": 960}))["query"]["pages"]
             ii = next(iter(info.values())).get("imageinfo", [{}])[0]
             if not ii.get("thumburl"):
                 print(f"{k}: arquivo {fname} fora do Commons"); continue
@@ -100,7 +103,7 @@ def main(force=False):
                 im = Image.open(io.BytesIO(fetch(ii["thumburl"], timeout=60))).convert("RGB")
                 im.thumbnail((900, 900))
                 im.save(out, "JPEG", quality=74, optimize=True, progressive=True)
-                time.sleep(1.5)
+                time.sleep(8)
             manifest[k] = {
                 "n": todo[k][1],
                 "a": strip_html(meta.get("Artist", {}).get("value")) or "Autor desconhecido",
