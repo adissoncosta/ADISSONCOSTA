@@ -1477,6 +1477,7 @@ let tMode = null;
     tMode = "api";
     $("tAutoDesc").textContent = "Os 12 meses se preenchem sozinhos com o menor preço do trecho em cada mês, a partir das tarifas encontradas por viajantes nos últimos dias. Rotas pouco buscadas podem ficar com meses sem preço; nesses, você pode anotar o valor à mão.";
     $("tAutoBtn").textContent = "Atualizar preços";
+    $("trend").querySelector(".sub").textContent = "Escolha o trecho e a duração da viagem. O menor preço de cada um dos próximos 12 meses aparece sozinho, com a companhia e o dia, e o gráfico mostra como a passagem varia no ano. Cada mês tem links de compra nas companhias; se quiser, anote outro valor à mão.";
     $("tAuto").hidden = false; $("tAutoOff").hidden = true;
     return;
   }
