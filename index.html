@@ -86,6 +86,10 @@ a.go .arrow{font-family:var(--mono);color:var(--accent);font-weight:600;flex:non
 a.go.buy{border-color:var(--accent)}
 a.go.buy .arrow{background:var(--accent);color:var(--accent-ink);padding:6px 10px;border-radius:8px;font-family:var(--body);font-size:.85rem}
 a.go.site .arrow{font-family:var(--body);font-size:.85rem}
+a.go .lp{display:block;font-family:var(--display);font-weight:700;font-size:1.5rem;line-height:1.1;margin-top:6px;color:var(--ink);font-variant-numeric:tabular-nums}
+a.go .lp.wait,a.go .lp.none{font-family:var(--body);font-size:.8rem;font-weight:500;color:var(--muted)}
+a.go.best{border-color:var(--good);box-shadow:inset 0 0 0 1px var(--good)}
+a.go .tag2{display:inline-block;font-size:.68rem;font-weight:600;padding:1px 6px;border-radius:4px;background:var(--good);color:var(--paper);margin-left:6px;vertical-align:2px}
 .ainote{font-size:.8rem;color:var(--muted);margin:6px 0 0}
 .cta{display:inline-flex;align-items:center;gap:8px;background:var(--accent);color:var(--accent-ink);font-weight:600;text-decoration:none;padding:12px 18px;border-radius:10px;margin-bottom:16px}
 
@@ -208,11 +212,6 @@ footer{color:var(--muted);font-size:.8rem;max-width:68ch}
 .live p{margin:0;font-size:.85rem;color:var(--muted)}
 .live #liveMsg:empty,.live #liveRes:empty,.live .row:not(:has(button:not([hidden]))){display:none}
 .live #liveMsg{color:var(--ink)}
-.lsrc{display:flex;flex-wrap:wrap;gap:6px}
-.lsrc span{font-family:var(--mono);font-size:.75rem;padding:3px 8px;border-radius:99px;border:1px solid var(--line);color:var(--muted)}
-.lsrc span.ok{border-color:var(--good);color:var(--good)}
-.lsrc span.no{border-color:var(--warn);color:var(--warn)}
-.lsrc span.run{border-color:var(--accent);color:var(--accent)}
 .lres{display:grid;gap:8px}
 .flt{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:4px 14px;align-items:center;padding:12px 14px;border:1px solid var(--line);border-radius:10px;background:var(--bg)}
 .flt.best{border-color:var(--good);box-shadow:inset 0 0 0 1px var(--good)}
@@ -291,15 +290,14 @@ footer{color:var(--muted);font-size:.8rem;max-width:68ch}
     <h2>Comprar direto na companhia</h2>
     <p class="summary" id="summary"></p>
     <p class="sub">Cada botão abre o site oficial da companhia com trecho, datas, passageiros e cabine já preenchidos. É só escolher o voo e pagar.</p>
-    <div class="group"><h3>Pagando em reais</h3><div class="list" id="cash"></div></div>
     <div class="live" id="live">
-      <div class="row"><button type="button" class="lbtn" id="liveBtn" hidden>Pesquisar preços aqui</button><button type="button" class="lstop" id="liveStop" hidden>Parar</button></div>
-      <p id="liveDesc" hidden>Abre o trecho acima nos sites das companhias com o navegador do app Claude e lista aqui os voos mais baratos, do menor para o maior preço, com o link para comprar. Leva cerca de 30 a 60 segundos.</p>
-      <p id="liveOff" hidden>Para comparar os preços das companhias aqui dentro, abra esta página no app Claude para computador. Enquanto isso, use os botões de compra.</p>
-      <div class="lsrc" id="liveSrc" hidden></div>
+      <div class="row"><button type="button" class="lbtn" id="liveBtn" hidden>Ver preços nas companhias</button><button type="button" class="lstop" id="liveStop" hidden>Parar</button></div>
+      <p id="liveDesc" hidden>O navegador do app Claude abre o trecho no site de cada companhia, lê o menor preço que aparece e coloca o valor no botão de compra, do mais barato para o mais caro. Leva cerca de 20 segundos por companhia.</p>
+      <p id="liveOff" hidden>Os preços das companhias aparecem aqui quando esta página é aberta no app Claude para computador, que consulta cada site. Fora dele, toque em Comprar para ver o preço no site da companhia.</p>
       <p id="liveMsg" aria-live="polite"></p>
-      <div class="lres" id="liveRes"></div>
     </div>
+    <div class="group"><h3 id="cashH">Pagando em reais</h3><div class="list" id="cash"></div></div>
+    <div class="group" id="liveFl" hidden><h3>Voos encontrados nos sites</h3><div class="lres" id="liveRes"></div></div>
     <div class="group"><h3>Usando milhas ou pontos</h3><div class="list" id="miles"></div></div>
   </section>
 
@@ -705,7 +703,26 @@ function links(s){
     miles: [...MILES].sort((a,b) => served.has(b.id) - served.has(a.id)).map(m => ({name:m.name, sub:m.note, url:m.url(s), buy:true, verb:"Emitir"}))
   };
 }
-const card = c => `<a class="go ${c.buy?"buy":"site"}" href="${esc(c.url)}" target="_blank" rel="noopener"><div><strong>${esc(c.name)}</strong><span>${esc(c.sub)}</span></div><span class="arrow">${c.verb||(c.buy?"Comprar":"Abrir")} →</span></a>`;
+const priceLine = c => c.price
+  ? `<b class="lp">${brlExact(c.price.v)}</b><span>${c.price.from === "voos" ? "voo mais barato no site" : "menor valor na página do site"}</span>`
+  : c.st === "run" ? `<span class="lp wait">Pesquisando preço…</span>`
+  : c.st === "no" ? `<span class="lp none">O site não mostrou preço; toque para ver lá</span>` : "";
+const card = c => `<a class="go ${c.buy?"buy":"site"}${c.best?" best":""}" href="${esc(c.url)}" target="_blank" rel="noopener"><div><strong>${esc(c.name)}${c.best?'<span class="tag2">menor preço</span>':""}</strong><span>${esc(c.sub)}</span>${priceLine(c)}</div><span class="arrow">${c.verb||(c.buy?"Comprar":"Abrir")} →</span></a>`;
+// Preços lidos nos sites das companhias para a busca atual (ficam salvos por 6 horas neste navegador)
+const LP_KEY = "radar-precos", LP_TTL = 6*3600e3;
+const searchKey = s => [s.from,s.to,s.dep,s.ret,s.pax,s.cabin].join("|");
+let livePrices = null;
+try { const j = JSON.parse(localStorage.getItem(LP_KEY)); if(j && j.key && Date.now()-j.at < LP_TTL) livePrices = j; } catch(_) {}
+const saveLivePrices = () => { try { localStorage.setItem(LP_KEY, JSON.stringify({...livePrices, status:{}})); } catch(_) {} };
+const hhmm = t => { const d = new Date(t); return `${pad2(d.getHours())}:${pad2(d.getMinutes())}`; };
+// Ordena os cartões em reais: com preço do menor para o maior, depois os sem preço na ordem original
+function cashCards(s, list){
+  const lp = livePrices && livePrices.key === searchKey(s) ? livePrices : null;
+  const cs = list.map((c,i) => ({...c, i, price: lp && lp.prices[c.name] || null, st: lp && lp.status && lp.status[c.name] || ""}));
+  if(lp) cs.sort((a,b) => ((a.price ? a.price.v : Infinity) - (b.price ? b.price.v : Infinity)) || a.i - b.i);
+  if(cs.filter(c => c.price).length > 1) cs[0].best = true;
+  return {cs, lp};
+}
 
 function render(){
   const s = state();
@@ -736,7 +753,9 @@ function render(){
     dest.innerHTML = `<img src="${ph.src}" alt="Foto: ${esc(ph.name)}" onerror="this.parentNode.hidden=true"><figcaption><strong>${esc((AIRPORTS[s.to]||s.to).split(" · ")[0])}</strong><span>${esc(ph.name)} · foto: ${esc(ph.credit)}</span></figcaption>`;
   }
   $("summary").textContent = `${s.from} → ${s.to} · ${fmtBR(s.dep)}${s.ret?" a "+fmtBR(s.ret):" (só ida)"} · ${s.pax} adulto${s.pax>1?"s":""} · ${CABIN_PT[s.cabin]}`;
-  $("cash").innerHTML = L.cash.map(card).join("");
+  const {cs, lp} = cashCards(s, L.cash);
+  $("cash").innerHTML = cs.map(card).join("");
+  $("cashH").textContent = lp && Object.keys(lp.prices).length ? `Pagando em reais · preços dos sites às ${hhmm(lp.at)}, do menor para o maior` : "Pagando em reais";
   $("miles").innerHTML = L.miles.map(card).join("");
 }
 
@@ -836,6 +855,7 @@ $("deals").addEventListener("click",e=>{
 // ---- Preço ao longo do ano ----
 const MES = ["jan","fev","mar","abr","mai","jun","jul","ago","set","out","nov","dez"];
 const MES_LONGO = ["janeiro","fevereiro","março","abril","maio","junho","julho","agosto","setembro","outubro","novembro","dezembro"];
+const brlExact = v => Number.isInteger(v) ? brl0(v) : v.toLocaleString("pt-BR",{style:"currency",currency:"BRL"});
 const brl0 = v => v.toLocaleString("pt-BR",{style:"currency",currency:"BRL",maximumFractionDigits:0});
 const parseBRL = s => { const n = parseFloat(String(s).replace(/[^\d,]/g,"").replace(",",".")); return isFinite(n)&&n>0 ? n : null; };
 const tStore = {
@@ -1013,9 +1033,9 @@ const tabIdOf = r => {
 // Menor preço em reais na página, ignorando faixas do tipo "normalmente custa entre"
 function minPrice(t){
   t = t.replace(/(normalmente|geralmente|costuma|tipicamente|típic)[^.\n]{0,90}/gi, " ");
-  const re = /R\$\s?(\d{1,3}(?:\.\d{3})+|\d{3,6})(?:,\d{2})?/g; let m, best = null;
+  const re = /R\$\s?(\d{1,3}(?:\.\d{3})+|\d{3,6})(?:,(\d{2}))?/g; let m, best = null;
   while((m = re.exec(t))){
-    const v = +m[1].replace(/\./g, "");
+    const v = +m[1].replace(/\./g, "") + (m[2] ? +m[2]/100 : 0);
     if(v >= 150 && v < 200000 && (best === null || v < best)) best = v;
   }
   return best;
@@ -1125,36 +1145,41 @@ let liveRun = null, liveSample = null;
   try { liveSample = window.claude && window.claude.use ? await window.claude.use("sample") : null; } catch(e) { liveSample = null; }
 })();
 function liveSources(s){
-  return links(s).cash.filter(c => c.buy).slice(0,3).map(c => [c.name, c.url]);
+  return links(s).cash.filter(c => c.buy).map(c => [c.name, c.url]);
 }
-const liveChip = (st) => $("liveSrc").innerHTML = st.map(([n,c]) => `<span class="${c}">${esc(n)}${c==="ok"?" ✓":c==="no"?" sem preços":c==="run"?" …":""}</span>`).join("");
+const liveWait = a => window.RADAR_WAIT_MS != null ? window.RADAR_WAIT_MS : (a ? 3000 : 5000);
 async function liveSearch(){
   if(liveRun || tRun || !tMcp) return;
   const s = state();
   if(!$("err").hidden){ $("liveMsg").textContent = "Corrija o trecho e as datas acima antes de pesquisar."; return; }
-  const srcs = liveSources(s), st = srcs.map(([n]) => [n,""]), pages = [];
+  const srcs = liveSources(s), pages = [];
   liveRun = {stop:false, ctl:null};
-  $("liveBtn").disabled = true; $("liveStop").hidden = false; $("liveSrc").hidden = false; $("liveRes").innerHTML = "";
+  livePrices = {key:searchKey(s), at:Date.now(), prices:{}, status:Object.fromEntries(srcs.map(([n]) => [n,"run"]))};
+  render();
+  $("liveBtn").disabled = true; $("liveStop").hidden = false; $("liveRes").innerHTML = ""; $("liveFl").hidden = true;
   const label = `${s.from} → ${s.to} · ${fmtBR(s.dep)}${s.ret?" a "+fmtBR(s.ret):" (só ida)"} · ${s.pax} adulto${s.pax>1?"s":""} · ${CABIN_PT[s.cabin]}`;
   let tab, err = null;
   try{
     for(const [i,[name,url]] of srcs.entries()){
       if(liveRun.stop) break;
-      st[i][1] = "run"; liveChip(st); $("liveMsg").textContent = `Pesquisando no ${name} (${i+1} de ${srcs.length})…`;
+      $("liveMsg").textContent = `Pesquisando no site da ${name} (${i+1} de ${srcs.length})…`;
       if(tab === undefined){ const r = await tMcp.callTool(BROWSER, "preview_start", {url}, {cache:false}); tab = tabIdOf(r); }
       else await tMcp.callTool(BROWSER, "navigate", tab === null ? {url} : {url, tabId:tab}, {cache:false});
       let text = "", v = null;
       for(let a = 0; a < 4 && v === null && !liveRun.stop; a++){
-        await sleep(a ? 3000 : 5000);
+        await sleep(liveWait(a));
         let r;
         try { r = await tMcp.callTool(BROWSER, "get_page_text", tab === null ? {} : {tabId:tab}, {cache:false}); }
         catch(e){ if(e && e.retryable && a < 3){ await sleep(Math.min(e.retryAfterMs||2000, 8000)); continue; } throw e; }
         text = textOf(r); v = minPrice(text);
       }
-      st[i][1] = v ? "ok" : "no"; liveChip(st);
-      if(v) pages.push({name, url, min:v, text:text.replace(/\s+/g," ").slice(0,14000)});
+      livePrices.status[name] = v ? "ok" : "no";
+      if(v){ livePrices.prices[name] = {v, from:"page"}; pages.push({name, url, min:v, text:text.replace(/\s+/g," ").slice(0,14000)}); }
+      render();
     }
   } catch(e){ err = e || {}; }
+  Object.keys(livePrices.status).forEach(n => { if(livePrices.status[n] === "run") livePrices.status[n] = ""; });
+  render();
   if(err && !pages.length){
     const base = ERR_TXT[err.code] || (err.code === "tool_error" ? `O navegador do Claude informou um erro: ${err.message||"sem detalhes"}` : `Não consegui concluir a pesquisa (${err.code||"erro desconhecido"}).`);
     $("liveMsg").textContent = base; return liveEnd();
@@ -1177,18 +1202,22 @@ async function liveSearch(){
     }
   }
   const urlOf = n => (pages.find(p => p.name === n) || pages[0]).url;
-  const now = new Date(), hora = `${pad2(now.getDate())}/${pad2(now.getMonth()+1)} às ${pad2(now.getHours())}:${pad2(now.getMinutes())}`;
+  // Com a lista de voos, o preço de cada companhia passa a ser o voo mais barato encontrado nela
+  if(flights && flights.length) pages.forEach(p => {
+    const vs = flights.filter(f => f.fonte === p.name).map(f => f.preco);
+    if(vs.length) livePrices.prices[p.name] = {v:Math.min(...vs), from:"voos"};
+  });
+  livePrices.at = Date.now(); saveLivePrices(); render();
+  const best = Object.entries(livePrices.prices).sort((a,b) => a[1].v-b[1].v)[0];
+  const noPrice = srcs.map(([n]) => n).filter(n => !livePrices.prices[n]);
+  $("liveMsg").textContent = `Preços consultados às ${hhmm(livePrices.at)} para ${label}. Mais barato: ${brlExact(best[1].v)} na ${best[0]}.` + (noPrice.length ? ` Sem preço na página: ${noPrice.join(", ")}.` : "") + " O valor pode mudar; confira no site antes de pagar.";
   if(flights && flights.length){
     $("liveRes").innerHTML = flights.map((f,i) => {
       const src = pages.some(p => p.name === f.fonte) ? f.fonte : "";
       const meta = [f.saida && f.chegada ? `${f.saida} – ${f.chegada}` : (f.saida||""), f.duracao, f.paradas, f.obs].filter(Boolean).map(esc).join(" · ");
       return `<div class="flt${i===0?" best":""}"><div><div class="al">${esc(f.cia||"Companhia não informada")}${i===0?'<span class="tag2">menor preço</span>':""}</div><div class="meta">${meta}</div></div><div class="pr">${brl0(f.preco)}<small>${esc(src||"")}</small></div><a href="${esc(urlOf(src))}" target="_blank" rel="noopener">Abrir no ${esc(src||pages[0].name)} →</a></div>`;
     }).join("");
-    $("liveMsg").textContent = `${flights.length} voos encontrados para ${label}, em ${hora}. Menor preço: ${brl0(flights[0].preco)}${flights[0].fonte?" no "+flights[0].fonte:""}. Confira no site antes de comprar.`;
-  } else {
-    const sorted = [...pages].sort((a,b) => a.min-b.min);
-    $("liveRes").innerHTML = sorted.map((p,i) => `<div class="flt${i===0?" best":""}"><div><div class="al">${esc(p.name)}${i===0?'<span class="tag2">menor preço</span>':""}</div><div class="meta">Menor valor que apareceu na página</div></div><div class="pr">${brl0(p.min)}<small>a partir de</small></div><a href="${esc(p.url)}" target="_blank" rel="noopener">Abrir no ${esc(p.name)} →</a></div>`).join("");
-    $("liveMsg").textContent = `Menor preço por site para ${label}, em ${hora}.` + (liveSample ? "" : " Para ver a lista de voos com horários, permita que a página use o Claude quando o app pedir.");
+    $("liveFl").hidden = false;
   }
   liveEnd();
 }

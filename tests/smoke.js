@@ -85,5 +85,36 @@ const assert = (c,m) => { console.log((c?'PASS ':'FAIL ')+m); if(!c) process.exi
   h = await hosts();
   assert(!h.some(x=>THIRD.test(x)), 'no third-party links after interactions: '+h.join(','));
   assert(errs.length===0, 'no page errors '+errs.join(';'));
+  // ---- preços lidos nos sites das companhias (navegador do app Claude simulado) ----
+  const ctxLive = await b.newContext({viewport:{width:375,height:760}});
+  await ctxLive.addInitScript(fixClock('2026-11-02T12:00:00'));
+  await ctxLive.addInitScript(() => {
+    window.RADAR_WAIT_MS = 10;
+    const PAGES = {'latamairlines':'Voos a partir de R$ 1.250,90 por pessoa', 'voegol':'Menor tarifa R$ 980 ida e volta. Normalmente custa R$ 700 a R$ 900', 'voeazul':'Não encontramos voos'};
+    let cur = '';
+    window.claude = {use: async cap => cap === 'mcp' ? {
+      listTools: async () => ({servers:[{server:'host:claude_browser'}]}),
+      callTool: async (srv, tool, args) => {
+        if(tool === 'preview_start' || tool === 'navigate'){ cur = args.url; return {payload:{tabId:7}}; }
+        const k = Object.keys(PAGES).find(h => cur.includes(h));
+        return {content:[{type:'text', text: k ? PAGES[k] : ''}]};
+      }} : null};
+  });
+  const pl = await ctxLive.newPage(); const errsL = []; pl.on('pageerror', e => errsL.push(e.message));
+  await pl.goto(url); await pl.waitForTimeout(300);
+  await pl.fill('#from','CGH'); await pl.dispatchEvent('#from','input');
+  await pl.fill('#to','SSA'); await pl.dispatchEvent('#to','input');
+  await pl.fill('#dep','2026-12-10'); await pl.dispatchEvent('#dep','change');
+  await pl.fill('#ret','2026-12-17'); await pl.dispatchEvent('#ret','change');
+  await pl.click('#liveBtn');
+  await pl.waitForFunction(() => !liveRun, null, {timeout:15000});
+  const cards = await pl.$$eval('#cash a.go', a => a.map(x => ({n:x.querySelector('strong').childNodes[0].textContent, lp:(x.querySelector('.lp')||{}).textContent||'', best:x.classList.contains('best')})));
+  assert(cards.map(c=>c.n).join()==='GOL,LATAM,Azul', 'cash cards sorted by site price: '+cards.map(c=>c.n+' '+c.lp).join(' | '));
+  assert(/980/.test(cards[0].lp) && /1\.250,90/.test(cards[1].lp) && cards[0].best && !cards[1].best, 'prices shown, cheapest highlighted (ignores "normalmente custa")');
+  assert(/não mostrou preço/.test(cards[2].lp), 'carrier without price marked');
+  await pl.reload(); await pl.waitForTimeout(300);
+  const after = await pl.$$eval('#cash strong', a => a.map(x => x.childNodes[0].textContent));
+  assert(after.join()==='GOL,LATAM,Azul', 'site prices kept after reload: '+after);
+  assert(errsL.length===0, 'no page errors with live prices '+errsL.join(';'));
   await b.close();
 })();
