@@ -4,7 +4,7 @@ e grava em img/<CHAVE>.jpg, atualizando o bloco PHOTOS dentro de index.html.
 
 Uso:  python3 scripts/fetch_photos.py            (baixa só as fotos e logotipos que faltam)
       python3 scripts/fetch_photos.py --force    (baixa todas de novo)
-      python3 scripts/fetch_photos.py --logos    (só os logotipos das companhias)
+      python3 scripts/fetch_photos.py --logos    (só os logotipos das companhias, de pics.avs.io)
 Requer acesso a en.wikipedia.org, commons.wikimedia.org e upload.wikimedia.org.
 """
 import io, json, re, sys, time, html, subprocess, urllib.parse, pathlib
@@ -65,13 +65,13 @@ def fetch(url, timeout=30):
         wait = min(15 * 2 ** attempt, 300)
         print(f"  limite de taxa ({code}), aguardando {wait}s", flush=True); time.sleep(wait)
 
-# código da companhia no site -> (artigo da Wikipédia em inglês, nome mostrado)
-LOGOS = {
-  "LA": ("LATAM Airlines Group", "LATAM"),
-  "G3": ("Gol Linhas Aéreas Inteligentes", "GOL"),
-  "AD": ("Azul Brazilian Airlines", "Azul"),
-  "TP": ("TAP Air Portugal", "TAP Air Portugal"),
-}
+# Logotipos das companhias por código IATA (os mesmos de AIRLINES no index.html).
+# Fonte: banco de logotipos de companhias aéreas da Travelpayouts (pics.avs.io), versão quadrada.
+LOGOS = {"LA":"LATAM","G3":"GOL","AD":"Azul","TP":"TAP Air Portugal","AA":"American Airlines",
+  "AR":"Aerolíneas Argentinas","CM":"Copa Airlines","EK":"Emirates","QR":"Qatar Airways","TK":"Turkish Airlines",
+  "AF":"Air France","KL":"KLM","IB":"Iberia","LH":"Lufthansa","LX":"Swiss","BA":"British Airways","AZ":"ITA Airways",
+  "DL":"Delta","UA":"United","AC":"Air Canada","AV":"Avianca","SA":"South African Airways","H2":"SKY Airline"}
+LOGO_URL = "https://pics.avs.io/al_square/240/240/{}.png"
 
 def get_json(url):
     time.sleep(0.5)  # ritmo gentil com a API da Wikimedia
@@ -134,39 +134,20 @@ def inject(name, data):
     (ROOT / "index.html").write_text(page)
 
 def logos(force=False):
-    """Logotipos das companhias: imagem principal do artigo da Wikipédia. Muitos logotipos são
-    arquivos locais da Wikipédia em inglês (uso não livre), por isso a consulta vai à API da en.wikipedia."""
+    """Baixa o logotipo quadrado de cada companhia para img/logo-<IATA>.png (120 px)."""
     IMG.mkdir(exist_ok=True)
     manifest_path = IMG / "logos.json"
     manifest = json.loads(manifest_path.read_text()) if manifest_path.exists() else {}
-    todo = {k: v for k, v in LOGOS.items() if force or k not in manifest or not (IMG / f"logo-{k}.png").exists()}
-    if todo:
-        q = get_json("https://en.wikipedia.org/w/api.php?" + urllib.parse.urlencode({
-            "action": "query", "format": "json", "redirects": 1, "prop": "pageimages",
-            "piprop": "name", "titles": "|".join(t for t, _ in todo.values())}))["query"]
-        alias = {n["from"]: n["to"] for n in q.get("normalized", []) + q.get("redirects", [])}
-        files = {p["title"]: p.get("pageimage") for p in q["pages"].values()}
-        for k, (title, name) in todo.items():
-            fname = files.get(alias.get(alias.get(title, title), alias.get(title, title)))
-            if not fname:
-                print(f"logo {k}: sem imagem para '{title}'"); continue
-            info = get_json("https://en.wikipedia.org/w/api.php?" + urllib.parse.urlencode({
-                "action": "query", "format": "json", "prop": "imageinfo", "titles": "File:" + fname,
-                "iiprop": "url|extmetadata", "iiurlwidth": 250}))["query"]["pages"]
-            ii = next(iter(info.values())).get("imageinfo", [{}])[0]
-            if not ii.get("thumburl"):
-                print(f"logo {k}: sem miniatura para {fname}"); continue
-            im = Image.open(io.BytesIO(fetch(ii["thumburl"], timeout=60))).convert("RGBA")
-            im.thumbnail((240, 120))
-            im.save(IMG / f"logo-{k}.png", "PNG", optimize=True)
-            meta = ii.get("extmetadata", {})
-            manifest[k] = {"n": name,
-                "a": strip_html(meta.get("Artist", {}).get("value")) or name,
-                "l": strip_html(meta.get("LicenseShortName", {}).get("value")) or "ver página",
-                "u": ii.get("descriptionurl", "")}
-            manifest_path.write_text(json.dumps(manifest, ensure_ascii=False, indent=1, sort_keys=True))
-            print(f"logo {k}: ok ({fname})", flush=True)
-            time.sleep(8)
+    for k, name in LOGOS.items():
+        out = IMG / f"logo-{k}.png"
+        if not force and k in manifest and out.exists():
+            continue
+        url = LOGO_URL.format(k)
+        im = Image.open(io.BytesIO(fetch(url, timeout=30))).convert("RGBA")
+        im.thumbnail((120, 120))
+        im.save(out, "PNG", optimize=True)
+        manifest[k] = {"n": name, "a": name, "l": "marca registrada", "u": url}
+        print(f"logo {k}: ok", flush=True)
     manifest_path.write_text(json.dumps(manifest, ensure_ascii=False, indent=1, sort_keys=True))
     inject("LOGOS", manifest)
     print(f"{len(manifest)} logotipos no manifesto")

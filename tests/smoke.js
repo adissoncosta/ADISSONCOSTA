@@ -23,7 +23,13 @@ const assert = (c,m) => { console.log((c?'PASS ':'FAIL ')+m); if(!c) process.exi
   // cash deal returns to round trip
   await p.click('#tabCash');
   gm = await grp();
-  assert(gm[0]==='Salvador,Porto,Foz' && gm[1].split(',').length===5 && !/Salvador|Porto|Foz/.test(gm[1]), 'cash deals split national/international: '+gm.join(' / '));
+  assert(gm[0]==='São,Porto,Foz' && gm[1].split(',').length===5 && !/Porto|Foz/.test(gm[1]), 'cash deals split national/international: '+gm.join(' / '));
+  // um logotipo só por oferta: o da companhia do menor preço
+  const whos = await p.$$eval('#deals .deal .who', a => a.map(x => x.querySelectorAll('.logos img').length+':'+x.querySelector('span:not([class])').textContent));
+  assert(whos.length===8 && whos.every(w => w.startsWith('1:')) && !whos.some(w => /Várias|,| e /.test(w)), 'one airline logo per cash deal: '+whos.join(' | '));
+  assert(whos[0]==='1:GOL' && whos.includes('1:Avianca') && whos.includes('1:United'), 'cheapest airline per deal: '+whos.join(' | '));
+  const logoOk = await p.$$eval('#deals .logos img', a => a.every(i => i.complete && i.naturalWidth > 0));
+  assert(logoOk, 'logo images load');
   await p.click('.deal button[data-i="3"]');
   st = await p.evaluate(()=>({rt:rt.getAttribute('aria-pressed'),sum:summary.textContent}));
   assert(st.rt==='true', 'cash deal sets round trip: '+st.sum);
@@ -133,7 +139,7 @@ const assert = (c,m) => { console.log((c?'PASS ':'FAIL ')+m); if(!c) process.exi
   assert(favs.length===1 && /Salvador/.test(favs[0]) && /R\$\s980/.test(favs[0]), 'saved route persists with site price: '+favs.join(' || '));
   // promoções: foto grande com destino, origem e preço
   const deal = await pl.$eval('.deal', x => ({city:x.querySelector('.city').textContent.trim(), orig:x.querySelector('.orig').textContent.trim(), price:x.querySelector('.price').textContent}));
-  assert(deal.city.startsWith('Salvador') && /Saindo de várias cidades/.test(deal.orig) && /R\$ 267/.test(deal.price), 'deal card shows destination, origin and price: '+JSON.stringify(deal));
+  assert(deal.city.startsWith('São Paulo') && /Saindo de Passo Fundo/.test(deal.orig) && /R\$ 267/.test(deal.price), 'deal card shows destination, origin and price: '+JSON.stringify(deal));
   const wide = await pl.evaluate(() => document.documentElement.scrollWidth <= innerWidth);
   assert(wide, 'no horizontal page scroll at 375px');
   assert(errsL.length===0, 'no page errors with routes '+errsL.join(';'));
