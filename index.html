@@ -284,7 +284,7 @@ footer{color:var(--muted);font-size:.8rem;max-width:68ch}
   <section class="deals">
     <div class="deals-head">
       <h2>Promoções encontradas</h2>
-      <p class="stamp">Pesquisado em 01/11/2026 · preços conferidos em 02/11/2026</p>
+      <p class="stamp">Pesquisado em 02/11/2026</p>
     </div>
     <p class="sub">Ofertas divulgadas por Melhores Destinos e Pontos pra Voar no fim de outubro de 2026. Os preços mudam rápido e valem para datas específicas; o botão de compra abre a companhia com o trecho preenchido para você conferir o valor.</p>
     <div class="tabs" role="tablist" aria-label="Tipo de oferta">
@@ -437,7 +437,7 @@ const AIRPORTS = {
   MIA:"Miami",MCO:"Orlando",FLL:"Fort Lauderdale",JFK:"Nova York · JFK",EWR:"Nova York · Newark",ATL:"Atlanta",IAH:"Houston",DFW:"Dallas",LAX:"Los Angeles",YYZ:"Toronto",
   EZE:"Buenos Aires · Ezeiza",AEP:"Buenos Aires · Aeroparque",SCL:"Santiago",MVD:"Montevidéu",LIM:"Lima",BOG:"Bogotá",PTY:"Cidade do Panamá",CUN:"Cancún",MEX:"Cidade do México",ASU:"Assunção",
   DXB:"Dubai",DOH:"Doha",IST:"Istambul",JNB:"Joanesburgo",NRT:"Tóquio · Narita",HND:"Tóquio · Haneda",
-  BRU:"Bruxelas",TPA:"Tampa",CJC:"Calama · Atacama",ICN:"Seul",BKK:"Bangkok",LDB:"Londrina",CPV:"Campina Grande",PFB:"Passo Fundo"
+  BRU:"Bruxelas",TPA:"Tampa",CJC:"Calama · Atacama",ICN:"Seul",BKK:"Bangkok",LDB:"Londrina",CPV:"Campina Grande",PFB:"Passo Fundo",RAO:"Ribeirão Preto"
 };
 const MD = "https://www.melhoresdestinos.com.br";
 // País de cada aeroporto internacional, para mostrar a bandeira nas promoções
@@ -452,22 +452,22 @@ const countryOf = code => COUNTRY[code] || (AIRPORTS[code] ? "BR" : "");
 const emoji = cc => String.fromCodePoint(...[...cc].map(c=>127397+c.charCodeAt(0)));
 const DEALS = {
   cash:[
-    {route:"PFB → GRU",title:"Passo Fundo a São Paulo pela GOL",price:"R$ 267",unit:"ida e volta",info:["Taxas incluídas; saídas de mais de 90 cidades","Rotas e datas na tabela da fonte"],badge:"Nacional",fill:["PFB","GRU","economy"],cia:"G3",src:MD+"/promocao/passagens-aereas-nacionais-30-10-26"},
+    {route:"GRU → RAO",title:"Férias de fim de ano: São Paulo a Ribeirão Preto pela LATAM",price:"R$ 284",unit:"ida e volta",info:["Taxas incluídas; viagens em dezembro, janeiro e Carnaval","Menores preços para São Paulo, Porto Alegre, BH, Curitiba e Florianópolis; Belém e Rio a partir de R$ 306"],badge:"Nacional",fill:["GRU","RAO","economy"],cia:"LA",src:MD+"/promocao/ferias-de-fim-de-ano-passagens-aereas-nacionais-31out26"},
+    {route:"GRU → FLN",title:"Santa Catarina: São Paulo a Florianópolis pela LATAM",price:"R$ 290",unit:"ida e volta",info:["Saídas de Porto Alegre, São Paulo e mais cidades","Navegantes a partir de R$ 327"],badge:"Nacional",fill:["GRU","FLN","economy"],cia:"LA",src:MD+"/promocao/santa-catarina-bem-barato-passagens-para-navegantes-florianopolis-31out26"},
     {route:"CWB → POA",title:"Natal Luz de Gramado: Curitiba a Porto Alegre pela LATAM",price:"R$ 384",unit:"ida e volta",info:["São Paulo por R$ 526; Belo Horizonte por R$ 560","Oferta vai só até segunda-feira, 02/11"],badge:"Nacional",fill:["CWB","POA","economy"],cia:"LA",until:"2026-11-02",src:MD+"/promocao/natal-luz-de-gramado-passagens-aereas-31out26"},
-    {route:"CGH → IGU",title:"São Paulo a Foz do Iguaçu pela Azul",price:"R$ 457",unit:"ida e volta",info:["Datas de nov/26 a mar/27, inclusive férias de janeiro","Curitiba por R$ 528; Campinas por R$ 683"],badge:"Nacional",fill:["CGH","IGU","economy"],cia:"AD",src:MD+"/promocao/baixou-voos-sao-paulo-foz-do-iguacu-453"},
+    {route:"REC → SSA",title:"Praias do Nordeste: Recife a Salvador pela Azul",price:"R$ 505",unit:"ida e volta",info:["Trechos entre Recife e Maceió ou Salvador; Fortaleza a partir de R$ 558","Brasília a Recife por R$ 579; Aracaju, Natal e Porto Seguro por R$ 648"],badge:"Nacional",fill:["REC","SSA","economy"],cia:"AD",src:MD+"/promocao/praias-do-nordeste-passagens-para-salvador-recife-31out26"},
     {route:"MAO → MCO",title:"Manaus a Orlando pela Avianca",price:"R$ 2.459",unit:"ida e volta",info:["Saídas de várias cidades do Brasil","Datas de nov/26 a out/27; melhores em nov, fev a mai, ago e set"],badge:"Internacional",fill:["MAO","MCO","economy"],logo:"AV",src:MD+"/promocao/parques-da-florida-voos-orlando-tampa-2341"},
-    {route:"GIG → NYC",title:"Rio de Janeiro a Nova York pela LATAM",price:"R$ 2.641",unit:"a partir de",info:["Datas inclusive na primavera de 2027","Outras cidades a partir de R$ 3.258"],badge:"Internacional",fill:["GIG","JFK","economy"],cia:"LA",src:MD+"/promocao/partiu-big-apple-passagens-aereas-para-nova-york-30out26"},
+    {route:"GIG → NYC",title:"Rio de Janeiro a Nova York pela LATAM",price:"R$ 2.641",unit:"a partir de",info:["Datas inclusive na primavera de 2027","Navegantes, BH, São Paulo, Porto Alegre e mais a partir de R$ 3.285"],badge:"Internacional",fill:["GIG","JFK","economy"],cia:"LA",src:MD+"/promocao/partiu-big-apple-passagens-aereas-para-nova-york-30out26"},
     {route:"FOR → LIS",title:"Europa em voo direto LATAM",price:"R$ 3.599",unit:"ida e volta",info:["Brasília a Milão por R$ 3.831; São Paulo a Bruxelas por R$ 3.984","Melhores datas: nov, fev e mar; sem bagagem despachada"],badge:"Internacional",fill:["FOR","LIS","economy"],cia:"LA",src:MD+"/promocao/europa-voos-diretos-da-latam-29out26"},
-    {route:"GRU → ICN",title:"São Paulo a Seul pela United",price:"R$ 6.047",unit:"ida e volta",info:["Saídas de várias cidades brasileiras","Também Índia, Taiwan, Hong Kong e Singapura"],badge:"Internacional",fill:["GRU","ICN","economy"],logo:"UA",src:MD+"/promocao/selecao-asia-passagens-para-japao-china-coreia-do-sul-tailandia-e-mais-destinos-a-partir-de-r-6-047-ida-e-volta"},
     {route:"FOR → LIS",title:"Fortaleza a Lisboa em executiva pela LATAM",price:"R$ 9.212",unit:"ida e volta",info:["Taxas incluídas","Rio a Barcelona por R$ 9.905; São Paulo a Lisboa por R$ 10.365"],badge:"Executiva",fill:["FOR","LIS","business"],cia:"LA",src:MD+"/promocao/passagens-aereas-europa-classe-executiva-30-10-26"}
   ],
   miles:[
-    {route:"CPV → REC",title:"Campina Grande a Recife pela Azul",price:"3.250",unit:"pontos Azul + taxas, o trecho",info:["Viagem em 17 de novembro; valor Diamante, demais 5.000","Outras nacionais: CGH → LDB por 4.892 LATAM Pass; CGH → FLN por 6.500 Smiles"],badge:"Nacional",fill:["CPV","REC","economy"],pts:"AD",date:"2026-11-17",src:"https://pontospravoar.com/alerta-ppv-passagens-nacionais-3250-pontos-taxas/"},
-    {route:"FLN → AEP",title:"Florianópolis a Buenos Aires pela GOL",price:"28.500",unit:"milhas Smiles + taxas, o trecho",info:["Viagem em 15 de dezembro","Clube e Diamante; demais clientes 30.000"],badge:"América do Sul",fill:["FLN","AEP","economy"],pts:"G3",date:"2026-12-15",src:"https://pontospravoar.com/alerta-ppv-smiles-oferece-voos-internacionais-a-partir-de-28-500-milhas-taxas/"},
-    {route:"VCP → LIM",title:"Campinas a Lima pela LATAM",price:"30.791",unit:"milhas LATAM Pass + taxas, o trecho",info:["Viagem em 5 de novembro","São Paulo a Cusco a partir de 34.898 (abril de 2027)"],badge:"América do Sul",fill:["VCP","LIM","economy"],pts:"LA",date:"2026-11-05",src:"https://pontospravoar.com/alerta-ppv-confira-passagens-para-o-peru-latam-pass-30-mil-milhas/"},
-    {route:"GRU → EZE",title:"São Paulo a Buenos Aires pela Turkish",price:"41.500",unit:"pontos Azul + taxas, o trecho",info:["Viagem em 17 de novembro","Azul pelo Mundo; Rio a Santiago pela SKY por 51.500"],badge:"América do Sul",fill:["GRU","EZE","economy"],pts:"AD",date:"2026-11-17",src:"https://pontospravoar.com/alerta-ppv-confira-destinos-internacionais-a-partir-de-41-500-pontos-no-azul-pelo-mundo/"},
-    {route:"MAO → JFK",title:"Manaus a Nova York pela Avianca",price:"54.400",unit:"milhas Smiles + taxas, o trecho",info:["Viagem em 2 de setembro","Clube e Diamante; demais clientes 58.000"],badge:"Internacional",fill:["MAO","JFK","economy"],pts:"G3",date:"2027-09-02",src:"https://pontospravoar.com/alerta-ppv-smiles-oferece-voos-internacionais-a-partir-de-28-500-milhas-taxas/"},
-    {route:"GRU → MCO",title:"São Paulo a Orlando pela Avianca",price:"66.500",unit:"milhas Smiles + taxas, o trecho",info:["Viagem em 17 de fevereiro","Clube e Diamante; demais clientes 70.000"],badge:"Internacional",fill:["GRU","MCO","economy"],pts:"G3",date:"2027-02-17",src:"https://pontospravoar.com/alerta-ppv-smiles-oferece-voos-internacionais-a-partir-de-28-500-milhas-taxas/"}
+    {route:"GRU → PFB",title:"Promoção LATAM Pass: São Paulo a Passo Fundo",price:"3.538",unit:"milhas LATAM Pass + taxas, o trecho",info:["Promoção de fim de semana da LATAM, publicada em 01/11; confira se ainda está ativa","Outras rotas nacionais em promoção na fonte"],badge:"Nacional",fill:["GRU","PFB","economy"],pts:"LA",src:MD+"/milhas/promocao-resgate-latam-pass-nov26"},
+    {route:"GIG → EZE",title:"Rio de Janeiro a Buenos Aires pela LATAM",price:"20.801",unit:"milhas LATAM Pass + taxas, o trecho",info:["Viagem em 15 de novembro","Curitiba a Santiago por 25.602 (1º de dezembro)"],badge:"América do Sul",fill:["GIG","EZE","economy"],pts:"LA",date:"2026-11-15",src:"https://pontospravoar.com/alerta-ppv-resgate-passagens-internacionais-20801-milhas-taxas/"},
+    {route:"MAO → PTY",title:"Manaus à Cidade do Panamá pela Smiles",price:"28.000",unit:"milhas Smiles + taxas, o trecho",info:["Viagem em 29 de abril de 2027","Clube e Diamante pagam 26.100"],badge:"Internacional",fill:["MAO","PTY","economy"],pts:"G3",date:"2027-04-29",src:"https://pontospravoar.com/alerta-ppv-resgate-passagens-internacionais-20801-milhas-taxas/"},
+    {route:"FLN → AEP",title:"Florianópolis a Buenos Aires pela Smiles",price:"29.000",unit:"milhas Smiles + taxas, o trecho",info:["Viagem em 15 de dezembro","Clube e Diamante pagam 27.500"],badge:"América do Sul",fill:["FLN","AEP","economy"],pts:"G3",date:"2026-12-15",src:"https://pontospravoar.com/alerta-ppv-resgate-passagens-internacionais-20801-milhas-taxas/"},
+    {route:"REC → OPO",title:"Recife ao Porto com pontos Azul",price:"65.000",unit:"pontos Azul + taxas, o trecho",info:["Viagem em 5 de dezembro; Diamante paga 57.850","Campinas a Madri por 70.000 no mesmo dia"],badge:"Internacional",fill:["REC","OPO","economy"],pts:"AD",date:"2026-12-05",src:"https://pontospravoar.com/alerta-ppv-resgate-passagens-internacionais-20801-milhas-taxas/"},
+    {route:"GRU → CUN",title:"São Paulo a Cancún pela Smiles",price:"65.000",unit:"milhas Smiles + taxas, o trecho",info:["Viagem em 10 de março de 2027","Clube e Diamante pagam 61.700"],badge:"Internacional",fill:["GRU","CUN","economy"],pts:"G3",date:"2027-03-10",src:"https://pontospravoar.com/alerta-ppv-resgate-passagens-internacionais-20801-milhas-taxas/"}
   ]
 };
 // ---- Ilustrações dos destinos (desenhos próprios, sem fotos) ----
@@ -878,7 +878,7 @@ setupCombo("from"); setupCombo("to"); setupCombo("exFrom");
 $("rt").onclick=()=>{oneWay=false;render();}; $("ow").onclick=()=>{oneWay=true;render();};
 $("swap").onclick=()=>{const a=$("from").value;$("from").value=$("to").value;$("to").value=a;render();};
 ["cPrice","cMiles","cTax","cCost"].forEach(id=>$(id).addEventListener("input",calc));
-const DEALS_AGE = (() => { const n = Math.round((new Date(todayYMD+"T12:00") - new Date("2026-11-01T12:00"))/864e5); return n <= 0 ? "hoje" : n === 1 ? "há 1 dia" : `há ${n} dias`; })();
+const DEALS_AGE = (() => { const n = Math.round((new Date(todayYMD+"T12:00") - new Date("2026-11-02T12:00"))/864e5); return n <= 0 ? "hoje" : n === 1 ? "há 1 dia" : `há ${n} dias`; })();
 const cityOf = c => (AIRPORTS[c] || c).split(" · ")[0];
 const flagFor = (z, d) => { const cc = d && /EUROPA/i.test(d.route) ? "EU" : countryOf(z); return cc ? emoji(cc) : ""; };
 const PLANE = `<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path transform="rotate(90 12 12)" d="M21 16v-2l-8-5V3.5a1.5 1.5 0 0 0-3 0V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5z"/></svg>`;

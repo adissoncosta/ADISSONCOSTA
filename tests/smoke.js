@@ -16,21 +16,21 @@ const assert = (c,m) => { console.log((c?'PASS ':'FAIL ')+m); if(!c) process.exi
   assert(titles.length===6, 'miles deals shown: '+titles.length);
   const grp = async () => p.evaluate(() => ['nat','int'].map(id => [...document.querySelectorAll('#deals-'+id+' .deal')].map(x => x.querySelector('.city').textContent.trim().split(' ')[0]).join(',')));
   let gm = await grp();
-  assert(gm[0]==='Recife' && gm[1].split(',').length===5, 'miles deals split national/international: '+gm.join(' / '));
-  await p.click('.deal button[data-i="1"]');
+  assert(gm[0]==='Passo' && gm[1].split(',').length===5, 'miles deals split national/international: '+gm.join(' / '));
+  await p.click('.deal button[data-i="3"]');
   let st = await p.evaluate(()=>({from:from.value,to:to.value,dep:dep.value,ow:ow.getAttribute('aria-pressed'),ret:ret.disabled,sum:summary.textContent}));
   assert(st.from==='FLN'&&st.to==='AEP'&&st.dep==='2026-12-15'&&st.ow==='true'&&st.ret, 'miles deal fills one-way + date: '+st.sum);
   // cash deal returns to round trip
   await p.click('#tabCash');
   gm = await grp();
-  assert(gm[0]==='São,Porto,Foz' && gm[1].split(',').length===5 && !/Porto|Foz/.test(gm[1]), 'cash deals split national/international: '+gm.join(' / '));
+  assert(gm[0]==='Ribeirão,Florianópolis,Porto,Salvador' && gm[1].split(',').length===4 && !/Ribeirão|Florianópolis|Salvador/.test(gm[1]), 'cash deals split national/international: '+gm.join(' / '));
   // um logotipo só por oferta: o da companhia do menor preço
   const whos = await p.$$eval('#deals .deal .who', a => a.map(x => x.querySelectorAll('.logos img').length+':'+x.querySelector('span:not([class])').textContent));
   assert(whos.length===8 && whos.every(w => w.startsWith('1:')) && !whos.some(w => /Várias|,| e /.test(w)), 'one airline logo per cash deal: '+whos.join(' | '));
-  assert(whos[0]==='1:GOL' && whos.includes('1:Avianca') && whos.includes('1:United'), 'cheapest airline per deal: '+whos.join(' | '));
+  assert(whos[0]==='1:LATAM' && whos[3]==='1:Azul' && whos[4]==='1:Avianca', 'cheapest airline per deal: '+whos.join(' | '));
   const logoOk = await p.$$eval('#deals .logos img', a => a.every(i => i.complete && i.naturalWidth > 0));
   assert(logoOk, 'logo images load');
-  await p.click('.deal button[data-i="3"]');
+  await p.click('.deal button[data-i="4"]');
   st = await p.evaluate(()=>({rt:rt.getAttribute('aria-pressed'),sum:summary.textContent}));
   assert(st.rt==='true', 'cash deal sets round trip: '+st.sum);
   // last-day badge on CWB→POA (until 2026-11-02 == today)
@@ -50,7 +50,7 @@ const assert = (c,m) => { console.log((c?'PASS ':'FAIL ')+m); if(!c) process.exi
   await p2.addInitScript(fixClock('2026-11-20T12:00:00'));
   await p2.goto(url); await p2.click('#tabMiles');
   const m2 = await p2.$$eval('.deal h3', a=>a.map(x=>x.textContent));
-  assert(m2.length===3, 'expired miles deals hidden on 20/11: '+m2.length);
+  assert(m2.length===5, 'expired miles deals hidden on 20/11: '+m2.length);
   // chart scale
   await p.fill('#tMonths input >> nth=0','4.400'); await p.dispatchEvent('#tMonths input >> nth=0','change');
   const axis = await p.$$eval('#tChart .axis', a=>a.map(x=>x.textContent));
@@ -91,7 +91,7 @@ const assert = (c,m) => { console.log((c?'PASS ':'FAIL ')+m); if(!c) process.exi
   assert(miles.length===3 && miles.includes('Smiles'), 'miles programs: '+miles);
   // oferta em milhas abre o programa com a data da oferta
   await p.click('#tabMiles');
-  const buy = await p.$('.deal a[data-buy="1"]'); await buy.dispatchEvent('pointerdown');
+  const buy = await p.$('.deal a[data-buy="3"]'); await buy.dispatchEvent('pointerdown');
   const smiles = await buy.getAttribute('href');
   assert(/smiles\.com\.br.*originAirport=FLN.*destinationAirport=AEP/.test(smiles) && smiles.includes(String(new Date('2026-12-15T12:00:00').getTime())), 'miles deal → Smiles link with deal date');
   h = await hosts();
@@ -139,7 +139,7 @@ const assert = (c,m) => { console.log((c?'PASS ':'FAIL ')+m); if(!c) process.exi
   assert(favs.length===1 && /Salvador/.test(favs[0]) && /R\$\s980/.test(favs[0]), 'saved route persists with site price: '+favs.join(' || '));
   // promoções: foto grande com destino, origem e preço
   const deal = await pl.$eval('.deal', x => ({city:x.querySelector('.city').textContent.trim(), orig:x.querySelector('.orig').textContent.trim(), price:x.querySelector('.price').textContent}));
-  assert(deal.city.startsWith('São Paulo') && /Saindo de Passo Fundo/.test(deal.orig) && /R\$ 267/.test(deal.price), 'deal card shows destination, origin and price: '+JSON.stringify(deal));
+  assert(deal.city.startsWith('Ribeirão Preto') && /Saindo de São Paulo/.test(deal.orig) && /R\$ 284/.test(deal.price), 'deal card shows destination, origin and price: '+JSON.stringify(deal));
   const wide = await pl.evaluate(() => document.documentElement.scrollWidth <= innerWidth);
   assert(wide, 'no horizontal page scroll at 375px');
   assert(errsL.length===0, 'no page errors with routes '+errsL.join(';'));
