@@ -112,6 +112,12 @@ const assert = (c,m) => { console.log((c?'PASS ':'FAIL ')+m); if(!c) process.exi
   assert(miles.length===3 && miles.includes('Smiles'), 'miles programs: '+miles);
   // oferta em milhas abre o programa com a data da oferta
   await p.click('#tabMiles');
+  const mp = await p.$$eval('.deal .price', a => a.map(x => x.textContent.replace(/\s+/g,' ').trim()));
+  assert(mp.length && mp.every(t => /^\d{1,3}(\.\d{3})* milhas/.test(t) && !/pontos/.test(t)), 'miles deals show "N milhas": '+mp.slice(0,3).join(' | '));
+  await p.click('#tabCash');
+  const cp = await p.$$eval('.deal .price', a => a.map(x => x.textContent.trim()));
+  assert(cp.length && cp.every(t => /^R\$\s?\d/.test(t)), 'cash deals show R$: '+cp.slice(0,3).join(' | '));
+  await p.click('#tabMiles');
   const buy = await p.$('.deal a[data-buy="3"]'); await buy.dispatchEvent('pointerdown');
   const smiles = await buy.getAttribute('href');
   assert(/smiles\.com\.br.*originAirport=FLN.*destinationAirport=AEP/.test(smiles) && smiles.includes(String(new Date('2026-12-15T12:00:00').getTime())), 'miles deal → Smiles link with deal date');
@@ -250,7 +256,7 @@ const assert = (c,m) => { console.log((c?'PASS ':'FAIL ')+m); if(!c) process.exi
                  LIS:{'2027-09':{price:2990,airline:'TP',departure_at:'2027-09-20T08:00:00-03:00',return_at:'2027-09-27T08:00:00-03:00'}}};
       return route.fulfill({status:200, headers:H, body:JSON.stringify({months: (q.days==='10' && M[q.to+'10']) || M[q.to] || {}})});
     }
-    const P = {GIG:{G3:{price:389,transfers:0}, LA:{price:412.5,transfers:1}, AV:{price:350,transfers:1}}, SSA:{AD:{price:612}}, LIS:{TP:{price:3480}}, REC:{G3:{price:701}}};
+    const P = {GIG:{G3:{price:389,transfers:0,duration:65,origin_airport:'CWB',destination_airport:'GIG',flight_number:'G31460'}, LA:{price:412.5,transfers:1}, AV:{price:350,transfers:1}}, SSA:{AD:{price:612}}, LIS:{TP:{price:3480}}, REC:{G3:{price:701}}};
     // Recife: o preço encontrado é de 3 dias depois da data pedida
     const depAt = q.to === 'REC' && q.dep ? new Date(Date.parse(q.dep+'T12:00:00Z') + 3*864e5).toISOString().slice(0,10) : (q.dep||'');
     const airlines = Object.fromEntries(Object.entries(P[q.to]||{}).map(([k,v]) => [k, {departure_at:depAt+'T08:00:00-03:00', ...v}]));
@@ -267,6 +273,9 @@ const assert = (c,m) => { console.log((c?'PASS ':'FAIL ')+m); if(!c) process.exi
   const api = await pa.$$eval('#cash a.go', a => a.map(x => x.querySelector('strong').childNodes[0].textContent+':'+((x.querySelector('.lp')||{}).textContent||'')));
   assert(/^Avianca:R\$\s350$/.test(api[0]) && /^GOL:R\$\s389$/.test(api[1]) && /^LATAM:R\$\s412,50$/.test(api[2]) && /Sem preço recente/.test(api[3]), 'real prices on airline buttons, cheapest first (extra airline added): '+api.join(' | '));
   assert(await pa.$eval('#cash a.go', x => x.classList.contains('best')), 'cheapest airline highlighted');
+  const row = await pa.$eval('#cash a.go:nth-child(2)', x => ({tm:x.querySelector('.tm').textContent, c2:x.querySelector('.c2').textContent, c3:x.querySelector('.c3').textContent, low:x.querySelector('.lp').classList.contains('low')}));
+  assert(row.tm === '08:00 – 09:05' && /1h 05 min/.test(row.c2) && /CWB–GIG/.test(row.c2) && /voo direto/.test(row.c3) && /G31460/.test(row.c3) && !row.low, 'flight row: departure–arrival, duration, airports, stops, flight number: '+JSON.stringify(row));
+  assert(await pa.$eval('#cash a.go .lp', x => x.classList.contains('low')), 'lowest price in green');
   assert(/direto/.test(await pa.textContent('#cash a.go:nth-child(2)')) && /por adulto/.test(await pa.textContent('#cash a.go:nth-child(2)')), 'shows stops and per adult');
   const q1 = apiCalls.find(q => q.from==='CWB' && q.to==='GIG' && q.dep==='2027-01-01');
   assert(q1 && q1.ret==='2027-01-08' && q1.cabin==='economy', 'asks the server for the chosen route and dates');
@@ -295,7 +304,7 @@ const assert = (c,m) => { console.log((c?'PASS ':'FAIL ')+m); if(!c) process.exi
   const live = await pa.evaluate(() => ({banner: document.getElementById('dealsLive').textContent.replace(/\s+/g,' ').trim(), stamp: document.getElementById('dealsStamp').textContent,
     nat: [...document.querySelectorAll('#deals-nat .deal')].map(x => x.querySelector('h3').textContent+' | '+x.querySelector('.price').textContent+' | '+x.querySelector('.who').textContent.replace(/\s+/g,' ').trim()),
     intl: [...document.querySelectorAll('#deals-int .deal h3')].map(x => x.textContent)}));
-  assert(/Ao vivo/.test(live.banner) && /Anoiteceu Azul: passagens a partir de R\$ 219,90 ou 8\.000 pontos/.test(live.banner) && /essa noite/.test(live.banner), 'live Azul campaign banner: '+live.banner);
+  assert(/Ao vivo/.test(live.banner) && /Anoiteceu Azul: passagens a partir de R\$ 219,90 ou 8\.000 milhas/.test(live.banner) && /essa noite/.test(live.banner), 'live Azul campaign banner: '+live.banner);
   assert(/Atualizado às/.test(live.stamp), 'deals stamp shows update time: '+live.stamp);
   assert(live.nat.length === 3 && /^São Paulo a Rio de Janeiro pela Azul \| R\$ 214,53só ida/.test(live.nat[0]) && /Macapá a Belém pela Azul/.test(live.nat[1]) && /Azul/.test(live.nat[0].split(' | ')[2]) && /voo em 04\/03/.test(live.nat[0]), 'live deals replace the stored list, cheapest first: '+live.nat.join(' || '));
   assert(live.intl.length === 1 && /Lisboa/.test(live.intl[0]), 'live international deal: '+live.intl.join());

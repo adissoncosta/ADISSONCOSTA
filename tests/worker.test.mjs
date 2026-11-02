@@ -13,6 +13,8 @@ const best = cheapestByAirline([
 ]);
 assert(best.LA.price === 480 && best.G3.price === 455 && !best.AD && Object.keys(best).length === 2, "cheapest per airline, JJ counted as LATAM: " + JSON.stringify(Object.fromEntries(Object.entries(best).map(([k, v]) => [k, v.price]))));
 assert(best.LA.link === "https://www.aviasales.com/search/B", "links made absolute");
+const det = cheapestByAirline([{ airline: "G3", price: 1222, departure_at: "2026-11-07T14:40:00-03:00", return_at: "", transfers: 1, duration: 210, duration_to: 210, origin_airport: "CNF", destination_airport: "CWB", flight_number: "1460" }]).G3;
+assert(det.duration === 210 && det.origin_airport === "CNF" && det.destination_airport === "CWB" && det.flight_number === "G31460" && det.transfers === 1 && det.departure_at.startsWith("2026-11-07T14:40"), "flight details for the list (time, duration, airports, flight number): " + JSON.stringify(det));
 
 // datas exatas; sem resultado, cai para o mês
 let calls = [];

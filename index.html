@@ -99,6 +99,36 @@ a.go .lp.wait,a.go .lp.none{font-family:var(--body);font-size:.8rem;font-weight:
 a.go.best{border-color:var(--good);box-shadow:inset 0 0 0 1px var(--good)}
 a.go .tag2{display:inline-block;font-size:.68rem;font-weight:600;padding:1px 6px;border-radius:4px;background:var(--good);color:var(--paper);margin-left:6px;vertical-align:2px}
 .ainote{font-size:.8rem;color:var(--muted);margin:6px 0 0}
+/* Principais voos (um por companhia) */
+.flights{display:grid;border:1px solid var(--line);border-radius:12px;overflow:hidden;background:var(--paper)}
+a.go.fl{display:grid;grid-template-columns:40px minmax(0,1.5fr) minmax(0,1fr) minmax(0,1fr) minmax(0,auto) auto;gap:2px 18px;align-items:center;border:0;border-radius:0;border-top:1px solid var(--line);padding:14px 16px}
+a.go.fl:first-child{border-top:0}
+a.go.fl.best{box-shadow:inset 3px 0 0 var(--good)}
+a.go.fl:hover,a.go.fl:focus-visible{background:var(--bg)}
+.fl .lg{width:40px;height:40px;display:grid;place-items:center}
+.fl .lg img{max-width:40px;max-height:40px;object-fit:contain}
+.fl .lg i{font-style:normal;font-weight:700;font-size:.8rem;width:36px;height:36px;border-radius:50%;display:grid;place-items:center;background:var(--bg);color:var(--muted)}
+.fl .c1,.fl .c2,.fl .c3,.fl .c4{display:block;min-width:0}
+a.go.fl .tm{font-size:1.05rem;font-weight:600;color:var(--ink);font-variant-numeric:tabular-nums}
+.fl .tm sup{font-size:.65rem;margin-left:2px;color:var(--muted)}
+a.go.fl strong{font-weight:500;font-size:.82rem;color:var(--muted)}
+a.go.fl .tm + strong{margin-top:1px}
+a.go.fl .c1 > strong:first-child{font-size:1rem;font-weight:600;color:var(--ink)}
+a.go.fl .wd{color:var(--warn)}
+.fl .c2 b,.fl .c3 b{display:block;font-weight:600;color:var(--ink);font-size:.95rem}
+.fl .c4{text-align:right}
+a.go.fl .lp{margin:0;font-size:1.3rem}
+a.go.fl .lp.low{color:var(--good)}
+a.go.fl .lp.wait,a.go.fl .lp.none{font-size:.8rem}
+@media (max-width:640px){
+  a.go.fl{grid-template-columns:32px minmax(0,1fr) auto;grid-template-areas:"lg c1 c4" "lg c2 c4" "lg c3 ar";gap:2px 12px;padding:12px}
+  .fl .lg{grid-area:lg;width:32px;height:32px;align-self:start}.fl .lg img{max-width:32px;max-height:32px}
+  .fl .c1{grid-area:c1}.fl .c2{grid-area:c2}.fl .c3{grid-area:c3}.fl .c4{grid-area:c4;align-self:start}.fl .arrow{grid-area:ar;justify-self:end}
+  .fl .c2 b,.fl .c3 b,a.go.fl .c2 span,a.go.fl .c3 span{display:inline;font-size:.8rem}
+  .fl .c2 b::after,.fl .c3 b::after{content:" · ";font-weight:400;color:var(--muted)}
+  .fl .c2 b:last-child::after,.fl .c3 b:last-child::after{content:""}
+  a.go.fl.buy .arrow{padding:5px 9px;font-size:.78rem}
+}
 .cta{display:inline-flex;align-items:center;gap:8px;background:var(--accent);color:var(--accent-ink);font-weight:600;text-decoration:none;padding:12px 18px;border-radius:10px;margin-bottom:16px}
 
 /* Promoções */
@@ -475,9 +505,9 @@ footer{color:var(--muted);font-size:.8rem;max-width:68ch}
       <p id="liveOff" hidden>Os preços das companhias aparecem aqui quando esta página é aberta no app Claude para computador, que consulta cada site. Fora dele, toque em Comprar para ver o preço no site da companhia.</p>
       <p id="liveMsg" aria-live="polite"></p>
     </div>
-    <div class="group"><h3 id="cashH">Pagando em reais</h3><div class="list" id="cash"></div></div>
+    <div class="group"><h3 id="cashH">Principais voos em reais (R$)</h3><div class="flights" id="cash"></div><p class="ainote">Melhor preço de cada companhia para 1 adulto, com taxas, pelas buscas mais recentes. O valor final é confirmado no site da companhia.</p></div>
     <div class="group" id="liveFl" hidden><h3>Voos encontrados nos sites</h3><div class="lres" id="liveRes"></div></div>
-    <div class="group"><h3>Usando milhas ou pontos</h3><div class="list" id="miles"></div></div>
+    <div class="group"><h3>Usando milhas</h3><div class="list" id="miles"></div></div>
   </section>
 
   <section class="trend" id="trend" aria-labelledby="trendTitle">
@@ -578,11 +608,11 @@ const DEALS = {
   ],
   miles:[
     {route:"GRU → PFB",title:"Promoção LATAM Pass: São Paulo a Passo Fundo",price:"3.538",unit:"milhas LATAM Pass + taxas, o trecho",info:["Promoção de fim de semana da LATAM, publicada em 01/11; confira se ainda está ativa","Outras rotas nacionais em promoção na fonte"],badge:"Nacional",fill:["GRU","PFB","economy"],pts:"LA",src:MD+"/milhas/promocao-resgate-latam-pass-nov26"},
-    {route:"GIG → EZE",title:"Rio de Janeiro a Buenos Aires pela LATAM",price:"20.801",unit:"milhas LATAM Pass + taxas, o trecho",info:["Viagem em 15 de novembro","Curitiba a Santiago por 25.602 (1º de dezembro)"],badge:"América do Sul",fill:["GIG","EZE","economy"],pts:"LA",date:"2026-11-15",src:"https://pontospravoar.com/alerta-ppv-resgate-passagens-internacionais-20801-milhas-taxas/"},
-    {route:"MAO → PTY",title:"Manaus à Cidade do Panamá pela Smiles",price:"28.000",unit:"milhas Smiles + taxas, o trecho",info:["Viagem em 29 de abril de 2027","Clube e Diamante pagam 26.100"],badge:"Internacional",fill:["MAO","PTY","economy"],pts:"G3",date:"2027-04-29",src:"https://pontospravoar.com/alerta-ppv-resgate-passagens-internacionais-20801-milhas-taxas/"},
-    {route:"FLN → AEP",title:"Florianópolis a Buenos Aires pela Smiles",price:"29.000",unit:"milhas Smiles + taxas, o trecho",info:["Viagem em 15 de dezembro","Clube e Diamante pagam 27.500"],badge:"América do Sul",fill:["FLN","AEP","economy"],pts:"G3",date:"2026-12-15",src:"https://pontospravoar.com/alerta-ppv-resgate-passagens-internacionais-20801-milhas-taxas/"},
-    {route:"REC → OPO",title:"Recife ao Porto com pontos Azul",price:"65.000",unit:"pontos Azul + taxas, o trecho",info:["Viagem em 5 de dezembro; Diamante paga 57.850","Campinas a Madri por 70.000 no mesmo dia"],badge:"Internacional",fill:["REC","OPO","economy"],pts:"AD",date:"2026-12-05",src:"https://pontospravoar.com/alerta-ppv-resgate-passagens-internacionais-20801-milhas-taxas/"},
-    {route:"GRU → CUN",title:"São Paulo a Cancún pela Smiles",price:"65.000",unit:"milhas Smiles + taxas, o trecho",info:["Viagem em 10 de março de 2027","Clube e Diamante pagam 61.700"],badge:"Internacional",fill:["GRU","CUN","economy"],pts:"G3",date:"2027-03-10",src:"https://pontospravoar.com/alerta-ppv-resgate-passagens-internacionais-20801-milhas-taxas/"}
+    {route:"GIG → EZE",title:"Rio de Janeiro a Buenos Aires pela LATAM",price:"20.801",unit:"milhas LATAM Pass + taxas, o trecho",info:["Viagem em 15 de novembro","Curitiba a Santiago por 25.602 milhas (1º de dezembro)"],badge:"América do Sul",fill:["GIG","EZE","economy"],pts:"LA",date:"2026-11-15",src:"https://pontospravoar.com/alerta-ppv-resgate-passagens-internacionais-20801-milhas-taxas/"},
+    {route:"MAO → PTY",title:"Manaus à Cidade do Panamá pela Smiles",price:"28.000",unit:"milhas Smiles + taxas, o trecho",info:["Viagem em 29 de abril de 2027","Clube e Diamante pagam 26.100 milhas"],badge:"Internacional",fill:["MAO","PTY","economy"],pts:"G3",date:"2027-04-29",src:"https://pontospravoar.com/alerta-ppv-resgate-passagens-internacionais-20801-milhas-taxas/"},
+    {route:"FLN → AEP",title:"Florianópolis a Buenos Aires pela Smiles",price:"29.000",unit:"milhas Smiles + taxas, o trecho",info:["Viagem em 15 de dezembro","Clube e Diamante pagam 27.500 milhas"],badge:"América do Sul",fill:["FLN","AEP","economy"],pts:"G3",date:"2026-12-15",src:"https://pontospravoar.com/alerta-ppv-resgate-passagens-internacionais-20801-milhas-taxas/"},
+    {route:"REC → OPO",title:"Recife ao Porto com pontos Azul",price:"65.000",unit:"pontos Azul + taxas, o trecho",info:["Viagem em 5 de dezembro; Diamante paga 57.850 milhas","Campinas a Madri por 70.000 milhas no mesmo dia"],badge:"Internacional",fill:["REC","OPO","economy"],pts:"AD",date:"2026-12-05",src:"https://pontospravoar.com/alerta-ppv-resgate-passagens-internacionais-20801-milhas-taxas/"},
+    {route:"GRU → CUN",title:"São Paulo a Cancún pela Smiles",price:"65.000",unit:"milhas Smiles + taxas, o trecho",info:["Viagem em 10 de março de 2027","Clube e Diamante pagam 61.700 milhas"],badge:"Internacional",fill:["GRU","CUN","economy"],pts:"G3",date:"2027-03-10",src:"https://pontospravoar.com/alerta-ppv-resgate-passagens-internacionais-20801-milhas-taxas/"}
   ]
 };
 // ---- Ilustrações dos destinos (desenhos próprios, sem fotos) ----
@@ -905,6 +935,53 @@ const priceLine = c => c.price && c.price.from === "api"
   : c.st === "run" ? `<span class="lp wait">Pesquisando preço…</span>`
   : c.st === "no" ? `<span class="lp none">O site não mostrou preço; toque para ver lá</span>`
   : c.st === "noapi" ? `<span class="lp none">Sem preço recente desta companhia; toque para ver no site</span>` : "";
+// ---- Lista "Principais voos": melhor preço de cada companhia, com horário, duração e paradas ----
+// Fuso (horas em relação ao UTC) dos aeroportos brasileiros fora do horário de Brasília
+const TZ_BR = {MAO:-4, PVH:-4, BVB:-4, CGB:-4, CGR:-4, TBT:-4, RBR:-5, CZS:-5, FEN:-2};
+const tzOf = code => countryOf(code) === "BR" ? (TZ_BR[code] ?? -3) : null;
+const durTxt = m => m > 0 ? `${Math.floor(m/60)}h${m%60 ? " "+pad2(m%60)+" min" : ""}` : "";
+// Horário de partida (local) e de chegada (no fuso do destino; só quando o fuso é conhecido)
+function flightTimes(p, s){
+  const m = /T(\d\d):(\d\d)(?::\d\d)?([+-]\d\d):?(\d\d)?/.exec(p.t || "");
+  if(!m) return null;
+  const dep = `${m[1]}:${m[2]}`, oa = p.oa || s.from, da = p.da || s.to;
+  const tz1 = m[3] ? +m[3] : tzOf(oa), tz2 = tzOf(da);
+  let arr = "", plus = 0;
+  if(p.dur > 0 && tz1 != null && tz2 != null){
+    let t = +m[1]*60 + +m[2] + p.dur + (tz2 - tz1)*60;
+    plus = Math.floor(t/1440); t = ((t % 1440) + 1440) % 1440;
+    arr = `${pad2(Math.floor(t/60))}:${pad2(t%60)}`;
+  }
+  return {dep, arr, plus};
+}
+// Link de compra: se o preço é de outro dia, abre a companhia nesse dia (mesma duração da viagem)
+function buyUrlFor(c, s){
+  const p = c.price, al = AIRLINE[c.id];
+  if(!(p && p.from === "api" && p.dep && p.dep !== s.dep && p.dep >= ymd(today) && al && al.url)) return c.url;
+  const nights = s.ret ? Math.round((new Date(s.ret+"T12:00") - new Date(s.dep+"T12:00")) / 864e5) : 0;
+  return al.url({...s, dep:p.dep, ret: s.ret ? addDays(p.dep, nights) : ""});
+}
+const flRow = (s, cheapest) => c => {
+  const p = c.price, api = p && p.from === "api";
+  const logo = LOGOS[c.id] ? `<img src="img/logo-${c.id}.png" alt="" loading="lazy">` : `<i>${esc((c.id || c.name).slice(0,2))}</i>`;
+  const ft = api ? flightTimes(p, s) : null;
+  const tm = ft ? `${ft.dep}${ft.arr ? " – "+ft.arr+(ft.plus > 0 ? `<sup>+${ft.plus}</sup>` : "") : ""}` : "";
+  const otherDay = api && p.dep && p.dep !== s.dep;
+  const when = !api ? "" : p.scope === "date" && !otherDay ? "" : `${otherDay ? "melhor dia: " : ""}${fmtBR(p.dep)}`;
+  const route = `${p && p.oa || s.from}–${p && p.da || s.to}`;
+  const priceTxt = p ? `<b class="lp${cheapest ? " low" : ""}">${brlExact(p.v)}</b><small>${s.ret ? "ida e volta" : "só ida"} · por adulto</small>`
+    : c.st === "run" ? `<span class="lp wait">Pesquisando preço…</span>`
+    : c.st === "no" ? `<span class="lp none">O site não mostrou preço</span>`
+    : c.st === "noapi" ? `<span class="lp none">Sem preço recente desta companhia</span>`
+    : `<span class="lp none">Veja o preço no site</span>`;
+  return `<a class="go fl${c.buy ? " buy" : " site"}${c.best ? " best" : ""}" href="${esc(buyUrlFor(c, s))}" target="_blank" rel="noopener">
+    <span class="lg" aria-hidden="true">${logo}</span>
+    <span class="c1">${tm ? `<span class="tm">${tm}</span>` : ""}<strong class="notranslate" translate="no">${esc(c.name)}${c.best ? '<span class="tag2">menor preço</span>' : ""}</strong>${when ? `<span class="wd">${esc(when)}</span>` : ""}</span>
+    <span class="c2">${api && p.dur ? `<b>${durTxt(p.dur)}</b>` : ""}<span>${esc(route)}</span></span>
+    <span class="c3">${api && p.stops != null ? `<b>${stopsTxt(p.stops)}</b>` : ""}${api && p.fn ? `<span>voo ${esc(p.fn)}</span>` : p && !api ? `<span>${p.from === "voos" ? "voo mais barato no site" : "menor valor no site"}</span>` : ""}</span>
+    <span class="c4">${priceTxt}</span>
+    <span class="arrow">${c.buy ? "Comprar" : "Abrir"} →</span></a>`;
+};
 const card = c => `<a class="go ${c.buy?"buy":"site"}${c.best?" best":""}" href="${esc(c.url)}" target="_blank" rel="noopener"><div><strong class="notranslate" translate="no">${esc(c.name)}${c.best?'<span class="tag2">menor preço</span>':""}</strong><span>${esc(c.sub)}</span>${priceLine(c)}</div><span class="arrow">${c.verb||(c.buy?"Comprar":"Abrir")} →</span></a>`;
 // Preços lidos nos sites das companhias para a busca atual (ficam salvos por 6 horas neste navegador)
 const LP_KEY = "radar-precos", LP_TTL = 6*3600e3;
@@ -933,7 +1010,8 @@ function apiPrices(s, force = false){
       if(!r.ok) throw new Error(j.message || r.status);
       const codes = Object.keys(j.airlines || {}).filter(c => AIRLINE[c]);
       const prices = {};
-      codes.forEach(c => { const a = j.airlines[c]; prices[AIRLINE[c].name] = {v:a.price, from:"api", scope:j.scope, dep:(a.departure_at || s.dep).slice(0,10), stops:a.transfers}; });
+      codes.forEach(c => { const a = j.airlines[c]; prices[AIRLINE[c].name] = {v:a.price, from:"api", scope:j.scope, dep:(a.departure_at || s.dep).slice(0,10), stops:a.transfers,
+        t:a.departure_at || "", dur:a.duration || 0, oa:a.origin_airport || "", da:a.destination_airport || "", fn:a.flight_number || ""}; });
       const status = Object.fromEntries([...names, ...codes.map(c => AIRLINE[c].name)].map(n => [n, prices[n] ? "ok" : "noapi"]));
       livePrices = {key, at:Date.now(), src:"api", scope:j.scope, prices, codes, status};
       saveLivePrices();
@@ -973,9 +1051,7 @@ function bestBox(s, cs, lp){
     : `melhor preço de ${mo(p.dep)}, ida ${fmtBR(p.dep).slice(0,5)}`;
   // o preço vale para outro dia: o botão abre a companhia nesse dia (mesma duração da viagem)
   const otherDay = p.from === "api" && p.dep && p.dep !== s.dep && p.dep >= ymd(today);
-  const al = AIRLINE[code];
-  const nights = s.ret ? Math.round((new Date(s.ret+"T12:00") - new Date(s.dep+"T12:00")) / 864e5) : 0;
-  const buyUrl = otherDay && al && al.url ? al.url({...s, dep:p.dep, ret: s.ret ? addDays(p.dep, nights) : ""}) : top.url;
+  const buyUrl = buyUrlFor(top, s);
   box.className = "best-box";
   box.innerHTML = `<div class="lbl">Menor preço encontrado · ${esc(label)}</div>
     <div class="main">${LOGOS[code] ? `<img src="img/logo-${code}.png" alt="">` : ""}<div><div class="pr">${brlExact(p.v)}</div><div class="who" translate="no">${esc(top.name)}</div></div></div>
@@ -1035,9 +1111,10 @@ function render(){
   }
   $("summary").textContent = `${s.from} → ${s.to} · ${fmtBR(s.dep)}${s.ret?" a "+fmtBR(s.ret):" (só ida)"} · ${s.pax} adulto${s.pax>1?"s":""} · ${CABIN_PT[s.cabin]}`;
   const {cs, lp} = cashCards(s, L.cash);
-  $("cash").innerHTML = cs.map(card).join("");
+  const low = Math.min(...cs.filter(c => c.price).map(c => c.price.v));
+  $("cash").innerHTML = cs.map(c => flRow(s, c.price && c.price.v === low)(c)).join("");
   bestBox(s, cs, lp);
-  $("cashH").textContent = lp && Object.keys(lp.prices).length ? `Pagando em reais · ${lp.src === "api" ? "menores preços encontrados" : "preços dos sites"} às ${hhmm(lp.at)}, do menor para o maior` : "Pagando em reais";
+  $("cashH").textContent = lp && Object.keys(lp.prices).length ? `Principais voos em reais (R$) · ${lp.src === "api" ? "menores preços encontrados" : "preços dos sites"} às ${hhmm(lp.at)}, do menor para o maior` : "Principais voos em reais (R$)";
   apiPrices(s);
   $("miles").innerHTML = L.miles.map(card).join("");
   syncTrend(s);
@@ -1139,6 +1216,11 @@ function carouselNav(){
   });
 }
 addEventListener("resize", () => document.querySelectorAll(".deal-grid, .fav-grid").forEach(g => g._cnav && g._cnav()));
+// Forma de pagamento padronizada: dinheiro sempre com "R$"; milhas com a palavra "milhas" ao lado do número
+const toMiles = t => String(t || "").replace(/\bpontos?\b/gi, "milhas");
+const payTxt = d => d.pts ? `${String(d.price).replace(/\s*(milhas|pontos)\b.*$/i, "")} milhas`
+  : /^R\$/.test(String(d.price)) ? d.price : `R$ ${d.price}`;
+const unitTxt = d => !d.pts ? d.unit : d.unit.replace(/^pontos Azul/i, "Azul Fidelidade").replace(/^(milhas|pontos)\s+/i, "");
 function renderDeals(){
   $("tabCash").setAttribute("aria-selected",dealTab==="cash");
   $("tabMiles").setAttribute("aria-selected",dealTab==="miles");
@@ -1156,7 +1238,7 @@ function renderDeals(){
       <div class="body">
       <div class="who">${whoBadge(codes, who)}<span translate="no">${esc(who)}</span><span class="age">${age}</span></div>
       <h3>${d.title}</h3>
-      <div class="price">${d.price}<small>${d.unit==="a partir de"?"a partir de":d.unit}</small></div>
+      <div class="price">${payTxt(d)}<small>${unitTxt(d)}</small></div>
       <ul><li>${d.info[0]}</li>${d.until===todayYMD?`<li style="color:var(--warn);font-weight:600">Último dia da oferta</li>`:""}</ul>
       <div class="acts">${d.cia||d.pts ? `<button type="button" class="alt" data-i="${i}">Outras companhias</button><a class="buybtn" data-buy="${i}" href="#" target="_blank" rel="noopener">${d.pts ? "Emitir" : "Comprar"} →</a>` : `<button type="button" data-i="${i}">Ver datas →</button>`}</div>
       </div>
@@ -1191,7 +1273,7 @@ function favPrice(r){
   }
   if(exData && exData.key.startsWith(r.from+"|") && exData.prices[r.to]) return {txt: brlExact(exData.prices[r.to]), note: `às ${hhmm(exData.at)}`};
   const d = activeDeals("cash").find(d => d.fill[0] === r.from && d.fill[1] === r.to);
-  if(d) return {txt: d.price, note: "em promoção"};
+  if(d) return {txt: payTxt(d), note: "em promoção"};
   return null;
 }
 function renderFavs(){
@@ -1251,7 +1333,7 @@ function exPriceOf(o, z){
   }
   if(mine && exData.status[z] === "run") return {wait: "Buscando preço…"};
   const d = activeDeals("cash").find(d => d.fill[0] === o && d.fill[1] === z);
-  if(d) return {v: dealNum(d.price), txt: d.price, note: "em promoção"};
+  if(d) return {v: dealNum(d.price), txt: payTxt(d), note: "em promoção"};
   if(mine && exData.status[z] === "no") return {wait: "Sem preço encontrado"};
   return null;
 }
@@ -1435,7 +1517,7 @@ function liveBanner(cs){
   const c = liveCamps.find(c => c.price);
   const left = c ? campLeft(c) : -1;
   $("dealsLive").hidden = !c || (left !== null && left <= 0);
-  if(!$("dealsLive").hidden) $("dealsLive").innerHTML = `<span class="dot">Ao vivo</span><div class="txt"><b>${esc(c.name)}: passagens a partir de ${esc(c.price)}${c.points ? " ou " + esc(c.points) : ""}</b><small>${esc([c.cond, c.when].filter(Boolean).join(" "))}</small></div>${left > 0 && c.fares && c.fares.length ? `<a href="#camp" class="go-camp">Ver melhores preços ↑</a>` : ""}<a href="${esc(c.url)}" target="_blank" rel="noopener">Ver na Azul →</a>`;
+  if(!$("dealsLive").hidden) $("dealsLive").innerHTML = `<span class="dot">Ao vivo</span><div class="txt"><b>${esc(c.name)}: passagens a partir de ${esc(c.price)}${c.points ? " ou " + esc(toMiles(c.points)) : ""}</b><small>${esc([c.cond, c.when].filter(Boolean).join(" "))}</small></div>${left > 0 && c.fares && c.fares.length ? `<a href="#camp" class="go-camp">Ver melhores preços ↑</a>` : ""}<a href="${esc(c.url)}" target="_blank" rel="noopener">Ver na Azul →</a>`;
   renderCamp();
 }
 function renderCamp(){
@@ -1452,7 +1534,7 @@ function renderCamp(){
   const buy = f => AIRLINE.AD.url({from:f.from, to:f.to, dep:f.dep, ret:f.oneWay ? "" : f.ret, pax:1, cabin:"economy"});
   box.innerHTML = `<div class="camp-top"><span class="dot">Ao vivo agora</span><span class="clock">${leftTxt(campLeft(c))}</span></div>
     <h2 id="campTitle">${esc(c.name)}: os melhores preços da Azul</h2>
-    <p class="lead">Passagens a partir de <b>${esc(c.price)}</b>${c.points ? " ou <b>"+esc(c.points)+"</b>" : ""}. ${esc([c.cond, c.when].filter(Boolean).join(" "))}</p>
+    <p class="lead">Passagens a partir de <b>${esc(c.price)}</b>${c.points ? " ou <b>"+esc(toMiles(c.points))+"</b>" : ""}. ${esc([c.cond, c.when].filter(Boolean).join(" "))}</p>
     ${origins.length > 1 ? `<div class="chips-o" role="group" aria-label="Saindo de"><button type="button" data-o="" aria-pressed="${!campOrigin}">Todas as saídas</button>${origins.map(o => `<button type="button" data-o="${esc(o)}" aria-pressed="${campOrigin===o}">${esc(o)}</button>`).join("")}</div>` : ""}
     <ul class="camp-list">${shown.map((f,i) => `<li class="${i===0?"top":""}"><span class="rt" translate="no">${esc(name(f.from))} → ${esc(name(f.to))}</span><span class="dt">ida ${fmtBR(f.dep)}${f.ret && !f.oneWay ? " · volta "+fmtBR(f.ret).slice(0,5) : ""} · ${f.oneWay ? "só ida" : "ida e volta"}${f.seen ? " · visto há "+esc(f.seen.replace(/\s*atrás$/,"")) : ""}</span><span class="pr">${brlExact(f.price)}<small>por adulto</small></span><a href="${esc(buy(f))}" target="_blank" rel="noopener">Comprar na Azul →</a></li>`).join("")}</ul>
     <div class="camp-foot"><span>${list.length} ${list.length===1?"trecho":"trechos"} com preço na página oficial da Azul, do menor para o maior. Confirme o valor no site antes de pagar.</span><span>${list.length > 9 ? `<button type="button" id="campAll">${campAll ? "Mostrar menos" : `Ver todos (${list.length})`}</button> ` : ""}<a class="sec" href="${esc(c.url)}" target="_blank" rel="noopener">Abrir a campanha →</a></span></div>`;
@@ -1614,7 +1696,7 @@ function renderTrend(){
   $("tActs").innerHTML = e ? "" : tLinks(s, s.dep).buy.slice(0,3).map(([n,u],i) => `<a class="${i?"sec":"cta"}" href="${esc(u)}" target="_blank" rel="noopener">${i?"":"Comprar na "}${esc(n)}${i?"":" →"}</a>`).join("");
   const deal = tDealFor(s);
   $("tDeal").hidden = !deal;
-  if(deal) $("tDeal").innerHTML = `Promoção atual para este trecho: <strong>${deal.price}</strong> ${deal.unit} · ${deal.cia?`<a href="${esc(AIRLINE[deal.cia].url({from:s.from,to:s.to,dep:s.dep,ret:s.days?addDays(s.dep,s.days):"",pax:1,cabin:"economy"}))}" target="_blank" rel="noopener">comprar na ${AIRLINE[deal.cia].name}</a>`:"confira na companhia"}`;
+  if(deal) $("tDeal").innerHTML = `Promoção atual para este trecho: <strong>${payTxt(deal)}</strong> ${deal.unit} · ${deal.cia?`<a href="${esc(AIRLINE[deal.cia].url({from:s.from,to:s.to,dep:s.dep,ret:s.days?addDays(s.dep,s.days):"",pax:1,cabin:"economy"}))}" target="_blank" rel="noopener">comprar na ${AIRLINE[deal.cia].name}</a>`:"confira na companhia"}`;
   const months = tMonths(s), saved = tStore.get(tKey(s)), selKey = (s.dep||"").slice(0,7);
   $("tMonths").innerHTML = months.map(mo => {
     const L = tLinks(s, mo.dep), v = saved[mo.key];
