@@ -40,6 +40,17 @@ header p{margin:8px 0 0;color:var(--muted);max-width:60ch}
 .city label,.field label{display:block;font-size:.72rem;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:4px}
 .city input{width:100%;font-family:var(--mono);font-weight:600;font-size:clamp(2rem,9vw,3rem);text-transform:uppercase;border:0;border-bottom:2px solid var(--line);background:transparent;color:var(--ink);padding:0 0 2px;letter-spacing:.04em}
 .city input:focus{outline:none;border-bottom-color:var(--accent)}
+.city{position:relative;min-width:0}
+.city input{height:clamp(2.7rem,11vw,3.8rem)}
+.city input.long{font-size:clamp(1.15rem,4.6vw,1.5rem);text-transform:none;letter-spacing:0}
+.city input::placeholder{font-size:1rem;text-transform:none;letter-spacing:0;color:var(--muted)}
+.sugg{position:absolute;z-index:20;left:0;right:0;top:100%;margin:4px 0 0;padding:4px;list-style:none;background:var(--paper);border:1px solid var(--line);border-radius:10px;box-shadow:0 10px 30px rgba(0,0,0,.18);max-height:320px;overflow:auto;text-align:left;min-width:min(280px,82vw)}
+.city.dest .sugg{left:auto;right:0}
+.sugg li{display:flex;gap:10px;align-items:baseline;padding:9px 10px;border-radius:7px;cursor:pointer}
+.sugg li b{font-family:var(--mono);font-weight:600;flex:none}
+.sugg li span{color:var(--muted);font-size:.88rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.sugg li[aria-selected="true"],.sugg li:hover{background:var(--bg)}
+.sugg li.none{cursor:default;color:var(--muted);font-size:.85rem}
 .city .name{font-size:.82rem;color:var(--muted);min-height:1.3em;margin-top:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .city.dest{text-align:right}.city.dest input{text-align:right}
 .swap{width:44px;height:44px;border-radius:50%;border:1px solid var(--line);background:var(--bg);color:var(--ink);cursor:pointer;margin-bottom:28px;display:grid;place-items:center}
@@ -72,6 +83,10 @@ a.go:hover,a.go:focus-visible{border-color:var(--accent);outline:none}
 a.go strong{display:block;font-weight:600}
 a.go span{display:block;font-size:.8rem;color:var(--muted)}
 a.go .arrow{font-family:var(--mono);color:var(--accent);font-weight:600;flex:none}
+a.go.buy{border-color:var(--accent)}
+a.go.buy .arrow{background:var(--accent);color:var(--accent-ink);padding:6px 10px;border-radius:8px;font-family:var(--body);font-size:.85rem}
+a.go.site .arrow{font-family:var(--body);font-size:.85rem}
+.ainote{font-size:.8rem;color:var(--muted);margin:6px 0 0}
 .cta{display:inline-flex;align-items:center;gap:8px;background:var(--accent);color:var(--accent-ink);font-weight:600;text-decoration:none;padding:12px 18px;border-radius:10px;margin-bottom:16px}
 
 /* Promoções */
@@ -98,7 +113,8 @@ a.go .arrow{font-family:var(--mono);color:var(--accent);font-weight:600;flex:non
 .deal ul{margin:0;padding:0;list-style:none;font-size:.85rem;color:var(--muted);display:grid;gap:2px}
 .deal .acts{display:flex;gap:8px;flex-wrap:wrap;margin-top:4px}
 .deal .acts button,.deal .acts a{font:inherit;font-size:.82rem;padding:6px 12px;border-radius:8px;border:1px solid var(--line);background:transparent;color:var(--ink);cursor:pointer;text-decoration:none}
-.deal .acts button{background:var(--accent);color:var(--accent-ink);border-color:var(--accent);font-weight:600}
+.deal .acts button,.deal .acts a.buybtn{background:var(--accent);color:var(--accent-ink);border-color:var(--accent);font-weight:600}
+.deal .acts button.alt{background:transparent;color:var(--ink);border-color:var(--line);font-weight:400}
 .badge{justify-self:start;font-size:.7rem;font-weight:600;padding:2px 8px;border-radius:4px;background:var(--bg);color:var(--ink);border:1px solid var(--line)}
 
 /* Variação de preço em 12 meses */
@@ -139,6 +155,7 @@ a.go .arrow{font-family:var(--mono);color:var(--accent);font-weight:600;flex:non
 .mo input{width:100%;font-family:var(--mono);font-size:.95rem;padding:7px 8px;border:1px solid var(--line);border-radius:6px;background:var(--paper);color:var(--ink)}
 .mo input:focus{outline:2px solid var(--accent);outline-offset:1px}
 .mo-l{display:flex;flex-wrap:wrap;gap:2px 10px;font-size:.78rem}
+.mo-l:empty{display:none}
 .mo-l a{white-space:nowrap}
 .mo-l a{color:var(--accent);text-decoration:none}
 .mo-l a:hover{text-decoration:underline}
@@ -178,6 +195,7 @@ footer{color:var(--muted);font-size:.8rem;max-width:68ch}
 .live .lbtn:disabled{opacity:.55;cursor:progress}
 .live .lstop{font:inherit;font-size:.85rem;padding:9px 14px;border-radius:10px;border:1px solid var(--line);background:transparent;color:var(--ink);cursor:pointer}
 .live p{margin:0;font-size:.85rem;color:var(--muted)}
+.live #liveMsg:empty,.live #liveRes:empty,.live .row:not(:has(button:not([hidden]))){display:none}
 .live #liveMsg{color:var(--ink)}
 .lsrc{display:flex;flex-wrap:wrap;gap:6px}
 .lsrc span{font-family:var(--mono);font-size:.75rem;padding:3px 8px;border-radius:99px;border:1px solid var(--line);color:var(--muted)}
@@ -201,7 +219,7 @@ footer{color:var(--muted);font-size:.8rem;max-width:68ch}
   <header>
     <span class="tag">BRASIL ⇄ MUNDO</span>
     <h1>Radar de Passagens</h1>
-    <p>Preencha o trecho uma vez e abra a mesma busca nos comparadores de preço e nos programas de milhas. Depois, use a calculadora para decidir entre pagar em reais ou em milhas.</p>
+    <p>Digite a cidade de origem e de destino, escolha as datas e compre direto no site da companhia aérea, com a busca já preenchida. Também dá para emitir com milhas e comparar com a calculadora.</p>
   </header>
 
   <section class="deals">
@@ -209,7 +227,7 @@ footer{color:var(--muted);font-size:.8rem;max-width:68ch}
       <h2>Promoções encontradas</h2>
       <p class="stamp">Pesquisado em 01/11/2026</p>
     </div>
-    <p class="sub">Ofertas publicadas no fim de outubro de 2026. Os preços mudam rápido e valem para datas específicas, então confira na fonte antes de comprar.</p>
+    <p class="sub">Ofertas divulgadas por Melhores Destinos e Pontos pra Voar no fim de outubro de 2026. Os preços mudam rápido e valem para datas específicas; o botão de compra abre a companhia com o trecho preenchido para você conferir o valor.</p>
     <div class="tabs" role="tablist" aria-label="Tipo de oferta">
       <button type="button" role="tab" id="tabCash" aria-selected="true">Em reais</button>
       <button type="button" role="tab" id="tabMiles" aria-selected="false">Em milhas</button>
@@ -221,7 +239,8 @@ footer{color:var(--muted);font-size:.8rem;max-width:68ch}
     <div class="pass-top">
       <div class="city">
         <label for="from">Origem</label>
-        <input id="from" list="airports" maxlength="3" autocomplete="off" value="GRU">
+        <input id="from" value="GRU" autocomplete="off" autocapitalize="characters" spellcheck="false" enterkeyhint="next" placeholder="Cidade ou código" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="fromList">
+        <ul class="sugg" id="fromList" role="listbox" aria-label="Sugestões de origem" hidden></ul>
         <div class="name" id="fromName"></div>
       </div>
       <button class="swap" id="swap" type="button" aria-label="Inverter origem e destino">
@@ -229,7 +248,8 @@ footer{color:var(--muted);font-size:.8rem;max-width:68ch}
       </button>
       <div class="city dest">
         <label for="to">Destino</label>
-        <input id="to" list="airports" maxlength="3" autocomplete="off" value="LIS">
+        <input id="to" value="LIS" autocomplete="off" autocapitalize="characters" spellcheck="false" enterkeyhint="next" placeholder="Cidade ou código" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="toList">
+        <ul class="sugg" id="toList" role="listbox" aria-label="Sugestões de destino" hidden></ul>
         <div class="name" id="toName"></div>
       </div>
     </div>
@@ -256,24 +276,24 @@ footer{color:var(--muted);font-size:.8rem;max-width:68ch}
   </section>
 
   <section class="results" aria-live="polite">
-    <h2>Buscar agora</h2>
+    <h2>Comprar direto na companhia</h2>
     <p class="summary" id="summary"></p>
-    <a class="cta" id="mainCta" target="_blank" rel="noopener">Ver calendário de preços no Google Voos →</a>
+    <p class="sub">Cada botão abre o site oficial da companhia com trecho, datas, passageiros e cabine já preenchidos. É só escolher o voo e pagar.</p>
+    <div class="group"><h3>Pagando em reais</h3><div class="list" id="cash"></div></div>
     <div class="live" id="live">
       <div class="row"><button type="button" class="lbtn" id="liveBtn" hidden>Pesquisar preços aqui</button><button type="button" class="lstop" id="liveStop" hidden>Parar</button></div>
-      <p id="liveDesc" hidden>Pesquisa o trecho acima no Google Voos, no Kayak e no Skyscanner com o navegador do app Claude e lista aqui os voos mais baratos encontrados, do menor para o maior preço. Leva cerca de 30 a 60 segundos.</p>
-      <p id="liveOff" hidden>Para pesquisar aqui dentro, abra esta página no app Claude para computador. Enquanto isso, use os links abaixo.</p>
+      <p id="liveDesc" hidden>Abre o trecho acima nos sites das companhias com o navegador do app Claude e lista aqui os voos mais baratos, do menor para o maior preço, com o link para comprar. Leva cerca de 30 a 60 segundos.</p>
+      <p id="liveOff" hidden>Para comparar os preços das companhias aqui dentro, abra esta página no app Claude para computador. Enquanto isso, use os botões de compra.</p>
       <div class="lsrc" id="liveSrc" hidden></div>
       <p id="liveMsg" aria-live="polite"></p>
       <div class="lres" id="liveRes"></div>
     </div>
-    <div class="group"><h3>Comparadores em reais</h3><div class="list" id="cash"></div></div>
-    <div class="group"><h3>Programas de milhas</h3><div class="list" id="miles"></div></div>
+    <div class="group"><h3>Usando milhas ou pontos</h3><div class="list" id="miles"></div></div>
   </section>
 
   <section class="trend" id="trend" aria-labelledby="trendTitle">
     <h2 id="trendTitle">Preço ao longo do ano</h2>
-    <p class="sub">Escolha o trecho e a data da ida. Abaixo aparecem os 12 meses a partir de hoje, cada um com a mesma busca no mesmo dia do mês. Abra o mês, anote o menor preço que aparecer e o gráfico mostra como a passagem varia no ano. As anotações ficam salvas só neste navegador.</p>
+    <p class="sub">Escolha o trecho e a data da ida. Abaixo aparecem os 12 meses a partir de hoje, cada um com o link de compra nas companhias para o mesmo dia do mês. Abra o mês, anote o menor preço e o gráfico mostra como a passagem varia no ano. As anotações ficam salvas só neste navegador.</p>
     <div class="tgrid">
       <div class="field"><label for="tFrom">Origem</label><select id="tFrom"></select></div>
       <button class="tswap" id="tSwap" type="button" aria-label="Inverter origem e destino"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 4 3 8l4 4"/><path d="M3 8h14"/><path d="m17 20 4-4-4-4"/><path d="M21 16H7"/></svg></button>
@@ -286,9 +306,6 @@ footer{color:var(--muted);font-size:.8rem;max-width:68ch}
     </div>
     <p class="err" id="tErr" hidden style="padding:0"></p>
     <div class="tacts" id="tActs">
-      <a class="cta" id="tGoogle" target="_blank" rel="noopener">Buscar esta data no Google Voos →</a>
-      <a class="sec" id="tSky" target="_blank" rel="noopener">Mês no Skyscanner</a>
-      <a class="sec" id="tKayak" target="_blank" rel="noopener">Kayak</a>
     </div>
     <div class="auto" id="tAuto" hidden>
       <div class="row"><button type="button" class="autobtn" id="tAutoBtn">Preencher automaticamente</button><button type="button" class="tacts-stop" id="tStop" hidden style="font:inherit;font-size:.85rem;padding:9px 14px;border-radius:10px;border:1px solid var(--line);background:transparent;color:var(--ink);cursor:pointer">Parar</button></div>
@@ -321,7 +338,7 @@ footer{color:var(--muted);font-size:.8rem;max-width:68ch}
   <section class="tips">
     <h2>Dicas para a busca</h2>
     <ul>
-      <li>No Google Voos, abra o calendário e o gráfico de preços para ver os dias mais baratos do mês.</li>
+      <li>Abra o mesmo trecho em mais de uma companhia: a diferença de preço entre LATAM, GOL e Azul costuma ser grande na mesma data.</li>
       <li>Teste aeroportos vizinhos: GRU, CGH e VCP em São Paulo; GIG e SDU no Rio; LIS e OPO em Portugal.</li>
       <li>Em programas de milhas, compare o valor do milheiro do resgate com o preço de compra das milhas e com as promoções de transferência bonificada.</li>
       <li>Busque também só ida em cada sentido. Às vezes duas passagens separadas saem mais baratas que ida e volta.</li>
@@ -331,7 +348,6 @@ footer{color:var(--muted);font-size:.8rem;max-width:68ch}
   <footer>Os preços aparecem nos sites de cada empresa, que abrem em uma nova aba. Esta página não vende passagens. A última busca e as anotações de preço ficam salvas só neste navegador.</footer>
 </div>
 
-<datalist id="airports"></datalist>
 
 <script>
 const AIRPORTS = {
@@ -370,17 +386,17 @@ const DEALS = {
     {route:"CGH → IGU",title:"São Paulo a Foz do Iguaçu",price:"R$ 453",unit:"ida e volta",info:["Datas de nov/26 a mar/27, inclusive férias de janeiro","Curitiba por R$ 528; Campinas por R$ 683"],badge:"Nacional",fill:["CGH","IGU","economy"],src:MD+"/promocao/baixou-voos-sao-paulo-foz-do-iguacu-453"},
     {route:"BR → MCO/TPA",title:"Orlando ou Tampa, na Flórida",price:"R$ 2.459",unit:"ida e volta",info:["Saídas de várias cidades do Brasil","Datas de nov/26 a out/27; melhores em nov, fev a mai, ago e set"],badge:"Internacional",fill:["GRU","MCO","economy"],src:MD+"/promocao/parques-da-florida-voos-orlando-tampa-2341"},
     {route:"GIG → NYC",title:"Rio de Janeiro a Nova York",price:"R$ 2.617",unit:"a partir de",info:["Datas inclusive na primavera de 2027","Outras cidades a partir de R$ 3.258"],badge:"Internacional",fill:["GIG","JFK","economy"],src:MD+"/promocao/partiu-big-apple-passagens-aereas-para-nova-york-30out26"},
-    {route:"FOR → LIS",title:"Europa em voo direto LATAM",price:"R$ 3.599",unit:"ida e volta",info:["Brasília a Milão por R$ 3.831; São Paulo a Bruxelas por R$ 3.984","Melhores datas: nov, fev e mar; sem bagagem despachada"],badge:"Internacional",fill:["FOR","LIS","economy"],src:MD+"/promocao/europa-voos-diretos-da-latam-29out26"},
+    {route:"FOR → LIS",title:"Europa em voo direto LATAM",price:"R$ 3.599",unit:"ida e volta",info:["Brasília a Milão por R$ 3.831; São Paulo a Bruxelas por R$ 3.984","Melhores datas: nov, fev e mar; sem bagagem despachada"],badge:"Internacional",fill:["FOR","LIS","economy"],cia:"LA",src:MD+"/promocao/europa-voos-diretos-da-latam-29out26"},
     {route:"BR → ÁSIA",title:"Japão, Coreia, Tailândia e mais destinos na Ásia",price:"R$ 6.047",unit:"ida e volta",info:["Saídas de várias cidades brasileiras","Também Índia, Taiwan, Hong Kong e Singapura"],badge:"Internacional",fill:["GRU","NRT","economy"],src:MD+"/promocao/selecao-asia-passagens-para-japao-china-coreia-do-sul-tailandia-e-mais-destinos-a-partir-de-r-6-047-ida-e-volta"},
     {route:"FOR → LIS",title:"Europa em classe executiva",price:"R$ 9.212",unit:"ida e volta",info:["Taxas incluídas","Rio a Barcelona por R$ 9.905; São Paulo a Lisboa por R$ 10.365"],badge:"Executiva",fill:["FOR","LIS","business"],src:MD+"/promocao/passagens-aereas-europa-classe-executiva-30-10-26"}
   ],
   miles:[
-    {route:"CPV → REC",title:"Campina Grande a Recife pela Azul",price:"3.250",unit:"pontos Azul + taxas, o trecho",info:["Viagem em 17 de novembro; valor Diamante, demais 5.000","Outras nacionais: CGH → LDB por 4.892 LATAM Pass; CGH → FLN por 6.500 Smiles"],badge:"Nacional",fill:["CPV","REC","economy"],date:"2026-11-17",src:"https://pontospravoar.com/alerta-ppv-passagens-nacionais-3250-pontos-taxas/"},
-    {route:"FLN → AEP",title:"Florianópolis a Buenos Aires pela GOL",price:"28.500",unit:"milhas Smiles + taxas, o trecho",info:["Viagem em 15 de dezembro","Clube e Diamante; demais clientes 30.000"],badge:"América do Sul",fill:["FLN","AEP","economy"],date:"2026-12-15",src:"https://pontospravoar.com/alerta-ppv-smiles-oferece-voos-internacionais-a-partir-de-28-500-milhas-taxas/"},
-    {route:"VCP → LIM",title:"Campinas a Lima pela LATAM",price:"30.791",unit:"milhas LATAM Pass + taxas, o trecho",info:["Viagem em 5 de novembro","São Paulo a Cusco a partir de 34.898 (abril de 2027)"],badge:"América do Sul",fill:["VCP","LIM","economy"],date:"2026-11-05",src:"https://pontospravoar.com/alerta-ppv-confira-passagens-para-o-peru-latam-pass-30-mil-milhas/"},
-    {route:"GRU → EZE",title:"São Paulo a Buenos Aires pela Turkish",price:"41.500",unit:"pontos Azul + taxas, o trecho",info:["Viagem em 17 de novembro","Azul pelo Mundo; Rio a Santiago pela SKY por 51.500"],badge:"América do Sul",fill:["GRU","EZE","economy"],date:"2026-11-17",src:"https://pontospravoar.com/alerta-ppv-confira-destinos-internacionais-a-partir-de-41-500-pontos-no-azul-pelo-mundo/"},
-    {route:"MAO → JFK",title:"Manaus a Nova York pela Avianca",price:"54.400",unit:"milhas Smiles + taxas, o trecho",info:["Viagem em 2 de setembro","Clube e Diamante; demais clientes 58.000"],badge:"Internacional",fill:["MAO","JFK","economy"],date:"2027-09-02",src:"https://pontospravoar.com/alerta-ppv-smiles-oferece-voos-internacionais-a-partir-de-28-500-milhas-taxas/"},
-    {route:"GRU → MCO",title:"São Paulo a Orlando pela Avianca",price:"66.500",unit:"milhas Smiles + taxas, o trecho",info:["Viagem em 17 de fevereiro","Clube e Diamante; demais clientes 70.000"],badge:"Internacional",fill:["GRU","MCO","economy"],date:"2027-02-17",src:"https://pontospravoar.com/alerta-ppv-smiles-oferece-voos-internacionais-a-partir-de-28-500-milhas-taxas/"}
+    {route:"CPV → REC",title:"Campina Grande a Recife pela Azul",price:"3.250",unit:"pontos Azul + taxas, o trecho",info:["Viagem em 17 de novembro; valor Diamante, demais 5.000","Outras nacionais: CGH → LDB por 4.892 LATAM Pass; CGH → FLN por 6.500 Smiles"],badge:"Nacional",fill:["CPV","REC","economy"],pts:"AD",date:"2026-11-17",src:"https://pontospravoar.com/alerta-ppv-passagens-nacionais-3250-pontos-taxas/"},
+    {route:"FLN → AEP",title:"Florianópolis a Buenos Aires pela GOL",price:"28.500",unit:"milhas Smiles + taxas, o trecho",info:["Viagem em 15 de dezembro","Clube e Diamante; demais clientes 30.000"],badge:"América do Sul",fill:["FLN","AEP","economy"],pts:"G3",date:"2026-12-15",src:"https://pontospravoar.com/alerta-ppv-smiles-oferece-voos-internacionais-a-partir-de-28-500-milhas-taxas/"},
+    {route:"VCP → LIM",title:"Campinas a Lima pela LATAM",price:"30.791",unit:"milhas LATAM Pass + taxas, o trecho",info:["Viagem em 5 de novembro","São Paulo a Cusco a partir de 34.898 (abril de 2027)"],badge:"América do Sul",fill:["VCP","LIM","economy"],pts:"LA",date:"2026-11-05",src:"https://pontospravoar.com/alerta-ppv-confira-passagens-para-o-peru-latam-pass-30-mil-milhas/"},
+    {route:"GRU → EZE",title:"São Paulo a Buenos Aires pela Turkish",price:"41.500",unit:"pontos Azul + taxas, o trecho",info:["Viagem em 17 de novembro","Azul pelo Mundo; Rio a Santiago pela SKY por 51.500"],badge:"América do Sul",fill:["GRU","EZE","economy"],pts:"AD",date:"2026-11-17",src:"https://pontospravoar.com/alerta-ppv-confira-destinos-internacionais-a-partir-de-41-500-pontos-no-azul-pelo-mundo/"},
+    {route:"MAO → JFK",title:"Manaus a Nova York pela Avianca",price:"54.400",unit:"milhas Smiles + taxas, o trecho",info:["Viagem em 2 de setembro","Clube e Diamante; demais clientes 58.000"],badge:"Internacional",fill:["MAO","JFK","economy"],pts:"G3",date:"2027-09-02",src:"https://pontospravoar.com/alerta-ppv-smiles-oferece-voos-internacionais-a-partir-de-28-500-milhas-taxas/"},
+    {route:"GRU → MCO",title:"São Paulo a Orlando pela Avianca",price:"66.500",unit:"milhas Smiles + taxas, o trecho",info:["Viagem em 17 de fevereiro","Clube e Diamante; demais clientes 70.000"],badge:"Internacional",fill:["GRU","MCO","economy"],pts:"G3",date:"2027-02-17",src:"https://pontospravoar.com/alerta-ppv-smiles-oferece-voos-internacionais-a-partir-de-28-500-milhas-taxas/"}
   ]
 };
 // ---- Ilustrações dos destinos (desenhos próprios, sem fotos) ----
@@ -491,6 +507,7 @@ const POPULAR = [["GRU","LIS"],["GRU","MIA"],["GRU","MCO"],["GIG","EZE"],["GRU",
   ["CGH","SDU"],["GRU","REC"],["GRU","SSA"],["BSB","FOR"],["GRU","MCZ"],["CGH","POA"],["GIG","NAT"],["GRU","FLN"]];
 
 const $ = id => document.getElementById(id);
+const esc = v => String(v==null?"":v).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const fmtBR = d => d ? d.split("-").reverse().join("/") : "";
 const pad2 = n => String(n).padStart(2,"0");
 const ymd = dt => `${dt.getFullYear()}-${pad2(dt.getMonth()+1)}-${pad2(dt.getDate())}`;
@@ -499,7 +516,6 @@ const addDays = (s,n) => { const d=new Date(s+"T12:00"); d.setDate(d.getDate()+n
 const CABIN_PT_KEYS = ["economy","premium","business","first"];
 let oneWay = false;
 
-$("airports").innerHTML = Object.entries(AIRPORTS).map(([c,n])=>`<option value="${c}">${n}</option>`).join("");
 $("chips").innerHTML = POPULAR.map(([a,b])=>`<button type="button" data-a="${a}" data-b="${b}">${a} → ${b}</button>`).join("");
 
 // datas de exemplo: ida em ~6 semanas, volta 10 dias depois
@@ -521,45 +537,166 @@ try{
 }catch(_){}
 
 function state(){
-  return {from:$("from").value.trim().toUpperCase(), to:$("to").value.trim().toUpperCase(),
+  return {from:codeOf($("from").value), to:codeOf($("to").value),
     dep:$("dep").value, ret:oneWay?"":$("ret").value, pax:+$("pax").value, cabin:$("cabin").value};
 }
-const SKY_CABIN = {economy:"economy",premium:"premiumeconomy",business:"business",first:"first"};
-const GF_CABIN = {economy:"",premium:" premium economy",business:" business class",first:" first class"};
 const CABIN_PT = {economy:"Econômica",premium:"Premium Economy",business:"Executiva",first:"Primeira"};
 
+// ---- Busca de aeroporto por cidade, nome ou código ----
+const norm = t => String(t).normalize("NFD").replace(/[̀-ͯ]/g,"").toLowerCase().replace(/[^a-z0-9 ]+/g," ").replace(/\s+/g," ").trim();
+const ALIASES = {
+  GRU:"sampa sp", CGH:"sampa sp", VCP:"sao paulo sp", GIG:"rio rj", SDU:"rio rj", CNF:"bh minas gerais", FLN:"floripa santa catarina",
+  NVT:"balneario camboriu itajai santa catarina", IGU:"cataratas parana", FEN:"noronha pernambuco", BPS:"trancoso arraial d ajuda bahia",
+  SSA:"bahia", REC:"pernambuco porto de galinhas", FOR:"ceara jericoacoara", NAT:"rio grande do norte pipa", MCZ:"alagoas maragogi",
+  JPA:"paraiba", AJU:"sergipe", BEL:"para", MAO:"amazonas", SLZ:"maranhao lencois", THE:"piaui", POA:"rio grande do sul gramado",
+  CWB:"parana", GYN:"goias", CGB:"mato grosso pantanal", CGR:"mato grosso do sul bonito", VIX:"espirito santo", PMW:"tocantins jalapao",
+  LDB:"parana", CPV:"paraiba", BSB:"distrito federal df",
+  LIS:"lisbon portugal", OPO:"oporto portugal", MAD:"madrid espanha", BCN:"espanha", CDG:"paris franca charles de gaulle",
+  FCO:"rome italia fiumicino", MXP:"milan italia", LHR:"london inglaterra heathrow", FRA:"alemanha", AMS:"amsterdam holanda",
+  ZRH:"zurich suica", BRU:"brussels belgica", MIA:"florida eua estados unidos", MCO:"disney florida eua estados unidos",
+  FLL:"miami florida eua", TPA:"florida eua", JFK:"new york nyc eua estados unidos", EWR:"new york nyc eua", ATL:"eua",
+  IAH:"eua texas", DFW:"eua texas", LAX:"eua california", YYZ:"canada", EZE:"argentina", AEP:"argentina", SCL:"chile",
+  CJC:"san pedro de atacama chile", MVD:"uruguai", LIM:"peru cusco machu picchu", BOG:"colombia", PTY:"panama",
+  CUN:"mexico", MEX:"mexico", ASU:"paraguai", DXB:"emirados arabes", DOH:"catar qatar", IST:"istanbul turquia",
+  JNB:"johannesburg africa do sul", NRT:"tokyo japao", HND:"tokyo japao", ICN:"seoul coreia do sul", BKK:"tailandia"
+};
+const AP_INDEX = Object.entries(AIRPORTS).map(([c,n]) => ({c, n, h:" "+norm(n+" "+(ALIASES[c]||""))+" "}));
+function searchAirports(q){
+  const raw = String(q).trim(), n = norm(raw), up = raw.toUpperCase();
+  if(!n) return [];
+  const out = [];
+  for(const a of AP_INDEX){
+    let sc = -1;
+    if(a.c === up) sc = 0;
+    else if(/^[A-Za-z]{1,3}$/.test(raw) && a.c.startsWith(up)) sc = 2;
+    if(a.h.startsWith(" "+n)) sc = sc < 0 ? 1 : Math.min(sc,1);
+    else if(sc < 0 && a.h.includes(" "+n)) sc = 3;
+    else if(sc < 0 && n.length >= 4 && a.h.includes(n)) sc = 4;
+    if(sc >= 0) out.push([sc, a.c]);
+  }
+  return out.sort((x,y) => x[0]-y[0] || x[1].localeCompare(y[1])).slice(0,8).map(x => x[1]);
+}
+// Código do aeroporto escolhido no campo: código conhecido, código IATA qualquer, ou nome com um único resultado
+function codeOf(v){
+  const raw = String(v).trim(), up = raw.toUpperCase();
+  if(AIRPORTS[up]) return up;
+  const m = searchAirports(raw);
+  if(m.length === 1) return m[0];
+  if(/^[A-Z]{3}$/i.test(raw) && !m.length) return up;
+  return "";
+}
+
+// ---- Links de compra direto nas companhias ----
+const EUR = ["LIS","OPO","MAD","BCN","CDG","FCO","MXP","LHR","FRA","AMS","ZRH","BRU"];
+const USA = Object.keys(COUNTRY).filter(c => COUNTRY[c]==="US");
+const SAM = Object.keys(COUNTRY).filter(c => ["AR","CL","UY","PE","CO","PY"].includes(COUNTRY[c]));
+const isBiz = s => s.cabin==="business" || s.cabin==="first";
+const dmy = d => d.split("-").reverse().join("-");
+const mdy = d => { const [y,m,dd] = d.split("-"); return `${m}/${dd}/${y}`; };
+function latamUrl(s, pts){
+  const t = d => `${d}T15:00:00.000Z`;
+  const q = new URLSearchParams({origin:s.from, outbound:t(s.dep), destination:s.to, inbound:s.ret?t(s.ret):"null",
+    adt:String(s.pax), chd:"0", inf:"0", trip:s.ret?"RT":"OW", cabin:isBiz(s)?"Business":"Economy", redemption:String(!!pts), sort:"RECOMMENDED"});
+  return `https://www.latamairlines.com/br/pt/oferta-voos?${q}`;
+}
+function azulUrl(s, pts){
+  let q = `c[0].ds=${s.from}&c[0].std=${mdy(s.dep)}&c[0].as=${s.to}`;
+  if(s.ret) q += `&c[1].ds=${s.to}&c[1].std=${mdy(s.ret)}&c[1].as=${s.from}`;
+  return `https://www.voeazul.com.br/br/pt/home/selecao-voo?${q}&p[0].t=ADT&p[0].c=${s.pax}&p[0].cd=&f.dl=3&f.dr=3&cc=${pts?"PTS":"BRL"}`;
+}
+const golUrl = s => `https://b2c.voegol.com.br/compra/busca-parceiros?pv=br&tipo=DF&de=${s.from}&para=${s.to}&ida=${dmy(s.dep)}` + (s.ret?`&volta=${dmy(s.ret)}`:"") + `&ADT=${s.pax}&ADL=0&CHD=0&INF=0&Selecao=1`;
+function smilesUrl(s){
+  const ms = d => String(new Date(d+"T12:00:00").getTime());
+  const q = new URLSearchParams({adults:String(s.pax), cabin:"ALL", children:"0", infants:"0", departureDate:ms(s.dep), returnDate:s.ret?ms(s.ret):"",
+    isFlexibleDateChecked:"false", searchType:"g3", segments:"1", tripType:s.ret?"1":"2", originAirport:s.from, destinationAirport:s.to,
+    originAirportIsAny:"false", destinationAirportIsAny:"false", "novo-resultado-voos":"true"});
+  return `https://www.smiles.com.br/mfe/emissao-passagem/?${q}`;
+}
+function tapUrl(s){
+  const c = d => { const [y,m,dd] = d.split("-"); return dd+m+y; };
+  const q = new URLSearchParams({market:"BR", language:"pt", origin:s.from, destination:s.to, flightType:s.ret?"return":"single",
+    depDate:c(s.dep), retDate:s.ret?c(s.ret):"", adt:String(s.pax), chd:"0", inf:"0", yth:"0", cabinClass:isBiz(s)?"B":"E"});
+  return `https://booking.flytap.com/booking/flights/deeplink?${q}`;
+}
+function aaUrl(s){
+  const sl = [{orig:s.from,origNearby:false,dest:s.to,destNearby:false,date:s.dep}];
+  if(s.ret) sl.push({orig:s.to,origNearby:false,dest:s.from,destNearby:false,date:s.ret});
+  const cab = {economy:"",premium:"PREMIUM_ECONOMY",business:"BUSINESS",first:"FIRST"}[s.cabin];
+  return `https://www.aa.com/booking/search?locale=pt_BR&pax=${s.pax}&adult=${s.pax}&child=0&type=${s.ret?"RoundTrip":"OneWay"}&searchType=Revenue&cabin=${cab}&carriers=ALL&travelType=&slices=${encodeURIComponent(JSON.stringify(sl))}`;
+}
+function arUrl(s){
+  const c = d => d.replace(/-/g,"");
+  return `https://www.aerolineas.com.ar/pt-br/flights-offers?adt=${s.pax}&inf=0&chd=0&flexDates=false&cabinClass=${isBiz(s)?"Business":"Economy"}&flightType=${s.ret?"ROUND_TRIP":"ONE_WAY"}&leg=${s.from}-${s.to}-${c(s.dep)}` + (s.ret?`&leg=${s.to}-${s.from}-${c(s.ret)}`:"");
+}
+const copaUrl = s => `https://shopping.copaair.com/?${new URLSearchParams({roundtrip:String(!!s.ret), adults:String(s.pax), children:"0", infants:"0", date1:s.dep, date2:s.ret||"", promocode:"", area1:s.from, area2:s.to, advanced_air_search:"false", flexible_dates_v2:"false", langid:"pt"})}`;
+const has = list => x => list.includes(x);
+// serves(x): x é o aeroporto fora do Brasil do trecho, ou null para voo nacional
+const AIRLINES = [
+  {id:"LA", name:"LATAM", serves:x => !x || has([...EUR.filter(c=>!["OPO","AMS","ZRH"].includes(c)), ...USA, ...SAM, "CUN","MEX","PTY","YYZ"])(x), url:s => latamUrl(s,false)},
+  {id:"G3", name:"GOL", serves:x => !x || has(["EZE","AEP","MVD","SCL","ASU","MIA","MCO","CUN"])(x), url:golUrl},
+  {id:"AD", name:"Azul", serves:x => !x || has(["LIS","OPO","MCO","FLL","EZE","AEP","MVD"])(x), url:s => azulUrl(s,false)},
+  {id:"TP", name:"TAP Air Portugal", serves:has(EUR), url:tapUrl},
+  {id:"AA", name:"American Airlines", serves:has(USA), url:aaUrl},
+  {id:"AR", name:"Aerolíneas Argentinas", serves:has(["EZE","AEP"]), url:arUrl},
+  {id:"CM", name:"Copa Airlines", serves:has(["PTY","CUN","MEX","BOG","MIA","MCO","JFK","LAX"]), url:copaUrl},
+  {id:"EK", name:"Emirates", serves:has(["DXB","BKK","NRT","HND","ICN","JNB"]), home:"https://www.emirates.com/"},
+  {id:"QR", name:"Qatar Airways", serves:has(["DOH","DXB","BKK","NRT","HND","ICN","JNB"]), home:"https://www.qatarairways.com/"},
+  {id:"TK", name:"Turkish Airlines", serves:has(["IST","DXB","DOH","BKK","NRT","HND","ICN"]), home:"https://www.turkishairlines.com/"},
+  {id:"AF", name:"Air France", serves:has(["CDG"]), home:"https://www.airfrance.com.br/"},
+  {id:"KL", name:"KLM", serves:has(["AMS"]), home:"https://www.klm.com.br/"},
+  {id:"IB", name:"Iberia", serves:has(["MAD","BCN"]), home:"https://www.iberia.com/"},
+  {id:"LH", name:"Lufthansa", serves:has(["FRA"]), home:"https://www.lufthansa.com/"},
+  {id:"LX", name:"Swiss", serves:has(["ZRH"]), home:"https://www.swiss.com/"},
+  {id:"BA", name:"British Airways", serves:has(["LHR"]), home:"https://www.britishairways.com/"},
+  {id:"AZ", name:"ITA Airways", serves:has(["FCO","MXP"]), home:"https://www.ita-airways.com/"},
+  {id:"DL", name:"Delta", serves:has(["ATL","JFK"]), home:"https://www.delta.com/"},
+  {id:"UA", name:"United", serves:has(["EWR","IAH"]), home:"https://www.united.com/"},
+  {id:"AC", name:"Air Canada", serves:has(["YYZ"]), home:"https://www.aircanada.com/"},
+  {id:"AV", name:"Avianca", serves:has(["BOG"]), home:"https://www.avianca.com/"},
+  {id:"SA", name:"South African Airways", serves:has(["JNB"]), home:"https://www.flysaa.com/"},
+  {id:"H2", name:"SKY Airline", serves:has(["SCL","CJC","LIM"]), home:"https://www.skyairline.com/"}
+];
+const AIRLINE = Object.fromEntries(AIRLINES.map(a => [a.id, a]));
+const MILES = [
+  {id:"LA", name:"LATAM Pass", note:"Resgate em voos LATAM e parceiras", url:s => latamUrl(s,true)},
+  {id:"G3", name:"Smiles", note:"Programa da GOL e parceiras", url:smilesUrl},
+  {id:"AD", name:"Azul Fidelidade", note:"Pontos em voos Azul e Azul pelo Mundo", url:s => azulUrl(s,true)}
+];
+const PROGRAM = Object.fromEntries(MILES.map(m => [m.id, m]));
+function foreignEnd(s){
+  const a = countryOf(s.from)==="BR", b = countryOf(s.to)==="BR";
+  return a && b ? null : a ? s.to : s.from;
+}
+function carriersFor(s){
+  const x = foreignEnd(s);
+  let list = AIRLINES.filter(al => al.serves(x));
+  if(!list.some(al => al.url)) list = [...["LA","G3","AD"].map(id => AIRLINE[id]), ...list];
+  return [...list.filter(al => al.url), ...list.filter(al => !al.url)];
+}
+const tripTxt = s => (s.ret ? "Ida e volta" : "Só ida") + ` · ${s.pax} adulto${s.pax>1?"s":""}`;
 function links(s){
-  const yymmdd = d => d.slice(2).replace(/-/g,"");
-  const gq = `Flights from ${s.from} to ${s.to} on ${s.dep}` + (s.ret?` through ${s.ret}`:" one way") + GF_CABIN[s.cabin] + (s.pax>1?` ${s.pax} adults`:"");
-  const google = `https://www.google.com/travel/flights?hl=pt-BR&curr=BRL&q=${encodeURIComponent(gq)}`;
-  const sky = `https://www.skyscanner.com.br/transporte/passagens-aereas/${s.from.toLowerCase()}/${s.to.toLowerCase()}/${yymmdd(s.dep)}/` + (s.ret?`${yymmdd(s.ret)}/`:"") + `?adultsv2=${s.pax}&cabinclass=${SKY_CABIN[s.cabin]}&rtn=${s.ret?1:0}`;
-  const kpath = `/${s.from}-${s.to}/${s.dep}` + (s.ret?`/${s.ret}`:"") + (s.cabin!=="economy"?`/${s.cabin}`:"") + (s.pax>1?`/${s.pax}adults`:"") + "?sort=price_a";
+  const cs = carriersFor(s), served = new Set(cs.map(c => c.id));
   return {
-    google,
-    cash:[
-      ["Google Voos","Calendário e gráfico de preços",google],
-      ["Skyscanner","Compara companhias e agências",sky],
-      ["Kayak","Ordenado pelo menor preço","https://www.kayak.com.br/flights"+kpath],
-      ["Momondo","Bom para combinações de trechos","https://www.momondo.com.br/flight-search"+kpath]
-    ],
-    miles:[
-      ["Smiles","Programa da GOL e parceiras","https://www.smiles.com.br/"],
-      ["LATAM Pass","Resgates LATAM e oneworld","https://latampass.latam.com/pt_br/"],
-      ["Azul Fidelidade","Resgates Azul e parceiras","https://www.voeazul.com.br/br/pt/programa-fidelidade"],
-      ["Seats.aero","Disponibilidade de assentos em milhas","https://seats.aero/"]
-    ]
+    carriers: cs,
+    cash: cs.map(al => al.url
+      ? {name:al.name, sub:`Busca preenchida · ${tripTxt(s)}`, url:al.url(s), buy:true}
+      : {name:al.name, sub:"Site oficial · informe o trecho lá", url:al.home, buy:false}),
+    miles: [...MILES].sort((a,b) => served.has(b.id) - served.has(a.id)).map(m => ({name:m.name, sub:m.note, url:m.url(s), buy:true, verb:"Emitir"}))
   };
 }
-const card = ([t,d,u]) => `<a class="go" href="${u}" target="_blank" rel="noopener"><div><strong>${t}</strong><span>${d}</span></div><span class="arrow">→</span></a>`;
+const card = c => `<a class="go ${c.buy?"buy":"site"}" href="${esc(c.url)}" target="_blank" rel="noopener"><div><strong>${esc(c.name)}</strong><span>${esc(c.sub)}</span></div><span class="arrow">${c.verb||(c.buy?"Comprar":"Abrir")} →</span></a>`;
 
 function render(){
   const s = state();
-  $("fromName").textContent = AIRPORTS[s.from] || (s.from.length===3?"Código IATA":"");
-  $("toName").textContent = AIRPORTS[s.to] || (s.to.length===3?"Código IATA":"");
+  [["from",s.from],["to",s.to]].forEach(([id,c]) => {
+    const v = $(id).value.trim();
+    $(id+"Name").textContent = c ? (AIRPORTS[c] || "Código IATA") : (v ? "Escolha na lista" : "");
+    $(id).classList.toggle("long", v.length > 3);
+  });
   $("ret").disabled = oneWay;
   $("rt").setAttribute("aria-pressed",!oneWay); $("ow").setAttribute("aria-pressed",oneWay);
   let e = "";
-  if(!/^[A-Z]{3}$/.test(s.from)||!/^[A-Z]{3}$/.test(s.to)) e="Use o código de 3 letras do aeroporto, como GRU ou LIS.";
+  if(!s.from||!s.to) e="Escolha a origem e o destino: digite a cidade (ex.: Salvador, Lisboa) e toque numa opção da lista.";
   else if(s.from===s.to) e="Origem e destino estão iguais. Troque um dos dois.";
   else if(!s.dep) e="Escolha a data de ida.";
   else if(s.dep<ymd(today)) e="A data de ida já passou. Escolha hoje ou uma data futura.";
@@ -572,7 +709,6 @@ function render(){
   if(e) return;
   const L = links(s);
   $("summary").textContent = `${s.from} → ${s.to} · ${fmtBR(s.dep)}${s.ret?" a "+fmtBR(s.ret):" (só ida)"} · ${s.pax} adulto${s.pax>1?"s":""} · ${CABIN_PT[s.cabin]}`;
-  $("mainCta").href = L.google;
   $("cash").innerHTML = L.cash.map(card).join("");
   $("miles").innerHTML = L.miles.map(card).join("");
 }
@@ -590,7 +726,41 @@ function calc(){
   else{pill.className="pill warn";pill.textContent="Pague em reais";$("cText").textContent=`O resgate rende só ${brl(v)} por milheiro, abaixo do seu custo de ${brl(c)}. Guarde as milhas para um resgate melhor.`;}
 }
 
-["from","to"].forEach(id=>$(id).addEventListener("input",e=>{e.target.value=e.target.value.toUpperCase().replace(/[^A-Z]/g,"");render();}));
+function setupCombo(id){
+  const inp = $(id), list = $(id+"List");
+  let items = [], active = -1;
+  const close = () => { list.hidden = true; inp.setAttribute("aria-expanded","false"); inp.removeAttribute("aria-activedescendant"); active = -1; };
+  const paint = () => {
+    list.querySelectorAll("li[data-c]").forEach((li,i) => li.setAttribute("aria-selected", i===active));
+    if(active >= 0) inp.setAttribute("aria-activedescendant", `${id}-opt-${active}`); else inp.removeAttribute("aria-activedescendant");
+  };
+  const open = () => {
+    const q = inp.value.trim();
+    items = q ? searchAirports(q) : [];
+    if(!q || (items.length===1 && items[0]===q.toUpperCase())){ close(); return; }
+    active = items.length ? 0 : -1;
+    list.innerHTML = items.length
+      ? items.map((c,i) => `<li role="option" id="${id}-opt-${i}" data-c="${c}"><b>${c}</b><span>${esc(AIRPORTS[c])}</span></li>`).join("")
+      : `<li class="none">Nenhum aeroporto encontrado. Use o código de 3 letras, se souber.</li>`;
+    list.hidden = false; inp.setAttribute("aria-expanded","true"); paint();
+  };
+  const pick = c => { inp.value = c; close(); render(); };
+  inp.addEventListener("input", () => { open(); render(); });
+  inp.addEventListener("focus", () => inp.select());
+  inp.addEventListener("keydown", e => {
+    if(list.hidden){ if(e.key==="ArrowDown"){ open(); e.preventDefault(); } return; }
+    if(e.key==="ArrowDown"){ active = Math.min(items.length-1, active+1); paint(); e.preventDefault(); }
+    else if(e.key==="ArrowUp"){ active = Math.max(0, active-1); paint(); e.preventDefault(); }
+    else if(e.key==="Enter"){ if(items[active]){ pick(items[active]); e.preventDefault(); } }
+    else if(e.key==="Escape"){ close(); }
+  });
+  list.addEventListener("pointerdown", e => { const li = e.target.closest("li[data-c]"); if(!li) return; e.preventDefault(); pick(li.dataset.c); });
+  inp.addEventListener("blur", () => setTimeout(() => {
+    const c = codeOf(inp.value); if(c && inp.value.trim().toUpperCase() !== c) inp.value = c;
+    close(); render();
+  }, 120));
+}
+setupCombo("from"); setupCombo("to");
 ["dep","ret","pax","cabin"].forEach(id=>$(id).addEventListener("change",()=>{ if($("dep").value&&$("ret").value<$("dep").value&&!oneWay) $("ret").value=addDays($("dep").value,7); render();}));
 $("rt").onclick=()=>{oneWay=false;render();}; $("ow").onclick=()=>{oneWay=true;render();};
 $("swap").onclick=()=>{const a=$("from").value;$("from").value=$("to").value;$("to").value=a;render();};
@@ -610,12 +780,22 @@ function renderDeals(){
       <h3>${d.title}</h3>
       <div><div class="from">A partir de</div><div class="price">${d.price}<small>${d.unit==="a partir de"?"":d.unit}</small></div></div>
       <ul>${d.info.map(x=>`<li>${x}</li>`).join("")}${d.until===todayYMD?`<li style="color:var(--warn);font-weight:600">Último dia da oferta</li>`:""}</ul>
-      <div class="acts"><button type="button" data-i="${i}">Montar busca</button><a href="${d.src}" target="_blank" rel="noopener">Ver oferta</a></div>
+      <div class="acts">${d.cia||d.pts ? `<a class="buybtn" data-buy="${i}" href="#" target="_blank" rel="noopener">${d.pts ? "Emitir no "+PROGRAM[d.pts].name : "Comprar na "+AIRLINE[d.cia].name} →</a><button type="button" class="alt" data-i="${i}">Outras companhias</button>` : `<button type="button" data-i="${i}">Ver companhias</button>`}</div>
       </div>
     </article>`).join("");
 }
 $("tabCash").onclick=()=>{dealTab="cash";renderDeals();};
 $("tabMiles").onclick=()=>{dealTab="miles";renderDeals();};
+// Trecho de compra de uma oferta: data da oferta (milhas, só ida) ou as datas do formulário
+function dealSearch(d){
+  const [from,to,cabin] = d.fill, f = state();
+  if(d.date) return {from, to, cabin, pax:1, dep:d.date, ret:""};
+  const dep = f.dep && f.dep >= ymd(today) ? f.dep : iso(d1);
+  const ret = $("ret").value > dep ? $("ret").value : addDays(dep, 10);
+  return {from, to, cabin, pax:f.pax||1, dep, ret};
+}
+const setBuyHref = a => { const d = activeDeals(dealTab)[+a.dataset.buy], s = dealSearch(d); a.href = d.pts ? PROGRAM[d.pts].url(s) : AIRLINE[d.cia].url(s); };
+["pointerdown","focusin","click"].forEach(ev => $("deals").addEventListener(ev, e => { const a = e.target.closest("a[data-buy]"); if(a) setBuyHref(a); }));
 $("deals").addEventListener("click",e=>{
   const b=e.target.closest("button[data-i]"); if(!b) return;
   const d=activeDeals(dealTab)[+b.dataset.i], [a,z,cab]=d.fill;
@@ -651,12 +831,12 @@ function tState(){ return {from:$("tFrom").value, to:$("tTo").value, dep:$("tDep
 const tKey = s => `radar-precos:${s.from}-${s.to}:${s.days?"iv":"ida"}`;
 function tLinks(s, dep){
   const ret = s.days ? addDays(dep, s.days) : "";
+  const q = {from:s.from, to:s.to, dep, ret, pax:1, cabin:"economy"};
+  // google: só usado internamente pelo preenchimento automático para ler o menor preço do mês
   const gq = `Flights from ${s.from} to ${s.to} on ${dep}` + (ret ? ` through ${ret}` : " one way");
-  const yymm = d => d.slice(2,7).replace("-","");
   return {
     google: `https://www.google.com/travel/flights?hl=pt-BR&curr=BRL&q=${encodeURIComponent(gq)}`,
-    sky: `https://www.skyscanner.com.br/transporte/passagens-aereas/${s.from.toLowerCase()}/${s.to.toLowerCase()}/${yymm(dep)}/` + (ret ? `${yymm(ret)}/` : "") + `?adultsv2=1&cabinclass=economy&rtn=${ret?1:0}`,
-    kayak: `https://www.kayak.com.br/flights/${s.from}-${s.to}/${dep}` + (ret ? `/${ret}` : "") + "?sort=price_a"
+    buy: carriersFor(q).filter(al => al.url).map(al => [al.name, al.url(q)])
   };
 }
 // Os 12 meses a partir do mês atual, com a ida no mesmo dia do mês escolhido
@@ -685,10 +865,10 @@ function renderTrend(){
   else if(s.dep < ymd(tToday) || s.dep > ymd(tMax)) e = "Escolha uma data entre hoje e daqui a um ano.";
   $("tErr").hidden = !e; $("tErr").textContent = e;
   $("tActs").style.opacity = e ? ".45" : "1";
-  if(!e){ const L = tLinks(s, s.dep); $("tGoogle").href = L.google; $("tSky").href = L.sky; $("tKayak").href = L.kayak; }
+  $("tActs").innerHTML = e ? "" : tLinks(s, s.dep).buy.slice(0,3).map(([n,u],i) => `<a class="${i?"sec":"cta"}" href="${esc(u)}" target="_blank" rel="noopener">${i?"":"Comprar na "}${esc(n)}${i?"":" →"}</a>`).join("");
   const deal = tDealFor(s);
   $("tDeal").hidden = !deal;
-  if(deal) $("tDeal").innerHTML = `Promoção atual para este trecho: <strong>${deal.price}</strong> ${deal.unit} · <a href="${deal.src}" target="_blank" rel="noopener">ver oferta</a>`;
+  if(deal) $("tDeal").innerHTML = `Promoção atual para este trecho: <strong>${deal.price}</strong> ${deal.unit} · ${deal.cia?`<a href="${esc(AIRLINE[deal.cia].url({from:s.from,to:s.to,dep:s.dep,ret:s.days?addDays(s.dep,s.days):"",pax:1,cabin:"economy"}))}" target="_blank" rel="noopener">comprar na ${AIRLINE[deal.cia].name}</a>`:"confira na companhia"}`;
   const months = tMonths(s), saved = tStore.get(tKey(s)), selKey = (s.dep||"").slice(0,7);
   $("tMonths").innerHTML = months.map(mo => {
     const L = tLinks(s, mo.dep), v = saved[mo.key];
@@ -696,7 +876,7 @@ function renderTrend(){
       <div class="mo-h"><strong>${MES[mo.m]} ${mo.y}</strong><span>ida ${fmtBR(mo.dep).slice(0,5)}</span></div>
       <label class="sr" for="tp-${mo.key}">Menor preço encontrado em ${MES_LONGO[mo.m]} de ${mo.y}</label>
       <input id="tp-${mo.key}" data-k="${mo.key}" inputmode="decimal" autocomplete="off" placeholder="R$ anotar" value="${v ? v.toLocaleString("pt-BR") : ""}">
-      <div class="mo-l"><a href="${L.google}" target="_blank" rel="noopener">Google Voos</a><a href="${L.sky}" target="_blank" rel="noopener">Skyscanner</a></div>
+      <div class="mo-l">${L.buy.slice(0,2).map(([n,u]) => `<a href="${esc(u)}" target="_blank" rel="noopener">${esc(n)}</a>`).join("")}</div>
       <small class="mo-s" data-s="${mo.key}"></small>
     </div>`;
   }).join("");
@@ -904,11 +1084,10 @@ async function autoFill(){
     if(err){
       const base = ERR_TXT[err.code] || (err.code === "tool_error" ? `O navegador do Claude informou um erro: ${err.message||"sem detalhes"}` : `Não consegui concluir a busca (${err.code||"erro desconhecido"}).`);
       tMsg(base + (found ? ` Antes disso: ${res}.` : ""));
-    } else tMsg(`${stopped ? "Busca interrompida" : "Pronto"}: ${res}, ${s.from} → ${s.to}, em ${hora}. Valores do Google Voos para 1 adulto; confira antes de comprar.`);
+    } else tMsg(`${stopped ? "Busca interrompida" : "Pronto"}: ${res}, ${s.from} → ${s.to}, em ${hora}. Valores do Google Voos para 1 adulto; use os links de cada mês para comprar na companhia.`);
   }
 }
 // ---- Pesquisa de preços dentro do app (navegador do app Claude + Claude para organizar) ----
-const esc = v => String(v==null?"":v).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 let liveRun = null, liveSample = null;
 (async () => {
   let ok = false, mcp = null;
@@ -919,8 +1098,7 @@ let liveRun = null, liveSample = null;
   try { liveSample = window.claude && window.claude.use ? await window.claude.use("sample") : null; } catch(e) { liveSample = null; }
 })();
 function liveSources(s){
-  const L = links(s);
-  return [["Google Voos", L.google], ["Kayak", L.cash[2][2]], ["Skyscanner", L.cash[1][2]]];
+  return links(s).cash.filter(c => c.buy).slice(0,3).map(c => [c.name, c.url]);
 }
 const liveChip = (st) => $("liveSrc").innerHTML = st.map(([n,c]) => `<span class="${c}">${esc(n)}${c==="ok"?" ✓":c==="no"?" sem preços":c==="run"?" …":""}</span>`).join("");
 async function liveSearch(){
@@ -961,7 +1139,7 @@ async function liveSearch(){
   let flights = null;
   if(liveSample && !liveRun.stop){
     $("liveMsg").textContent = "Organizando os voos encontrados…";
-    const prompt = `Abaixo está o texto de páginas de resultado de busca de passagens aéreas (${pages.map(p=>p.name).join(", ")}) para ${label}. Extraia os voos com preço em reais que aparecem no texto. Use SOMENTE preços, companhias, horários e paradas que estejam escritos no texto; nunca invente nem estime. Ignore faixas como "normalmente custa", anúncios e preços de hotel. Responda só com um array JSON de até 12 objetos, ordenado do menor para o maior preço, no formato: [{"fonte":"Google Voos","cia":"LATAM","preco":3550,"saida":"22:10","chegada":"11:45+1","duracao":"10 h 35 min","paradas":"Direto","obs":"preço ida e volta"}]. "preco" é número inteiro em reais; campos ausentes ficam "". Se nenhum voo com preço aparecer, responda [].\n\n` + pages.map(p => `=== ${p.name} ===\n${p.text}`).join("\n\n");
+    const prompt = `Abaixo está o texto das páginas de resultado de busca de voos nos sites das companhias aéreas (${pages.map(p=>p.name).join(", ")}) para ${label}. Extraia os voos com preço em reais que aparecem no texto. Use SOMENTE preços, companhias, horários e paradas que estejam escritos no texto; nunca invente nem estime. Ignore faixas como "normalmente custa", anúncios e preços de hotel. Responda só com um array JSON de até 12 objetos, ordenado do menor para o maior preço, no formato: [{"fonte":"LATAM","cia":"LATAM","preco":3550,"saida":"22:10","chegada":"11:45+1","duracao":"10 h 35 min","paradas":"Direto","obs":"preço ida e volta"}]. "preco" é número inteiro em reais; campos ausentes ficam "". Se nenhum voo com preço aparecer, responda [].\n\n` + pages.map(p => `=== ${p.name} ===\n${p.text}`).join("\n\n");
     liveRun.ctl = new AbortController();
     try {
       const j = await liveSample.json(prompt, {signal: liveRun.ctl.signal, modelTier:"quick", cache:false});
@@ -983,7 +1161,7 @@ async function liveSearch(){
   } else {
     const sorted = [...pages].sort((a,b) => a.min-b.min);
     $("liveRes").innerHTML = sorted.map((p,i) => `<div class="flt${i===0?" best":""}"><div><div class="al">${esc(p.name)}${i===0?'<span class="tag2">menor preço</span>':""}</div><div class="meta">Menor valor que apareceu na página</div></div><div class="pr">${brl0(p.min)}<small>a partir de</small></div><a href="${esc(p.url)}" target="_blank" rel="noopener">Abrir no ${esc(p.name)} →</a></div>`).join("");
-    $("liveMsg").textContent = `Menor preço por site para ${label}, em ${hora}.` + (liveSample ? "" : " Para ver a lista de voos com companhia e horários, permita que a página use o Claude quando o app pedir.");
+    $("liveMsg").textContent = `Menor preço por site para ${label}, em ${hora}.` + (liveSample ? "" : " Para ver a lista de voos com horários, permita que a página use o Claude quando o app pedir.");
   }
   liveEnd();
 }
