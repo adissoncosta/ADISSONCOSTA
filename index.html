@@ -1349,11 +1349,18 @@ function tDealFor(s){
   return activeDeals("cash").find(d => d.fill[0]===s.from && d.fill[1]===s.to && d.fill[2]==="economy" && parseBRL(d.price));
 }
 
+// Nomes de companhias que aparecem nos preços, mas não têm botão de compra (sem link conhecido)
+const AIRLINE_NAMES = {AT:"Royal Air Maroc", DT:"TAAG Angola", ET:"Ethiopian", UX:"Air Europa", AM:"Aeroméxico", JA:"JetSMART", "2Z":"Voepass",
+  TA:"Avianca", LP:"LATAM", JJ:"LATAM", O6:"Avianca Brasil", AY:"Finnair", KE:"Korean Air", NH:"ANA", JL:"Japan Airlines", SQ:"Singapore Airlines",
+  CX:"Cathay Pacific", EY:"Etihad", SV:"Saudia", MS:"EgyptAir", TG:"Thai Airways", CA:"Air China", MU:"China Eastern", CZ:"China Southern",
+  AC:"Air Canada", WS:"WestJet", B6:"JetBlue", NK:"Spirit", F9:"Frontier", AS:"Alaska Airlines", "4O":"Interjet", VB:"Viva Aerobus", Y4:"Volaris",
+  P5:"Wingo", OB:"BoA", Z8:"Amaszonas", PU:"Plus Ultra", EW:"Eurowings", VY:"Vueling", FR:"Ryanair", U2:"easyJet", TO:"Transavia", SK:"SAS", OS:"Austrian", SN:"Brussels Airlines"};
+const airlineName = c => AIRLINE[c] ? AIRLINE[c].name : (AIRLINE_NAMES[c] || c || "");
 // Menor preço de cada mês pelo servidor de preços: companhia e dia ficam guardados em data._auto
 function tAutoNote(data, k){
   if(data._manual && data._manual[k]) return data[k] ? "anotado por você" : "";
   const a = data._auto && data._auto.months && data._auto.months[k];
-  if(a) return `${esc(AIRLINE[a.airline] ? AIRLINE[a.airline].name : (a.airline || ""))}${a.dep ? " · ida "+fmtBR(a.dep).slice(0,5) : ""}`;
+  if(a) return `${esc(airlineName(a.airline))}${a.dep ? " · ida "+fmtBR(a.dep).slice(0,5) : ""}`;
   return data._auto ? "sem preço recente" : "";
 }
 const tAutoAsked = new Set();
