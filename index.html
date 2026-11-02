@@ -152,18 +152,31 @@ figure.dest figcaption span{font-size:.82rem;opacity:.9}
 .fav .info b{font-size:1.15rem;font-variant-numeric:tabular-nums}
 .fav .info span{font-size:.78rem;color:var(--muted)}
 .fav .rm{position:absolute;top:8px;right:8px;width:30px;height:30px;border-radius:50%;border:0;background:rgba(10,20,35,.62);color:#fff;font-size:1.05rem;line-height:1;cursor:pointer;display:grid;place-items:center}
-.fav-empty{margin:0;color:var(--muted);font-size:.9rem;padding:14px;border:1px dashed var(--line);border-radius:14px}
-.fav-add{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr) auto;gap:10px;align-items:end;margin-top:12px;background:var(--paper);border:1px solid var(--line);border-radius:14px;padding:14px}
-.fav-add .combo{position:relative;min-width:0}
-.fav-add .field input{font-family:var(--body)}
-.fav-add .combo .sugg{min-width:min(260px,80vw)}
-.fav-add #favTo + .sugg{left:auto;right:0}
-.fav-add button{font:inherit;font-weight:600;font-size:.9rem;padding:10px 16px;border-radius:10px;border:0;background:var(--accent);color:var(--accent-ink);cursor:pointer;height:42px}
-.fav-add .msg{grid-column:1/-1;margin:0;font-size:.82rem;color:var(--muted)}
-.fav-add .msg:empty{display:none}
+.favs .hero{font-family:var(--body);font-weight:700;font-size:clamp(1.9rem,8.5vw,2.7rem);line-height:1.05;letter-spacing:-.025em;text-transform:none;margin:0;text-wrap:balance}
+.ex-bar{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:10px;align-items:stretch}
+.ex-from{position:relative;min-width:0;display:flex;align-items:center;gap:10px;background:var(--paper);border:1px solid var(--line);border-radius:18px;padding:0 16px;min-height:58px}
+.ex-from:focus-within{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent)}
+.ex-from > svg{width:22px;height:22px;color:var(--muted);flex:none}
+.ex-from input{flex:1;min-width:0;border:0;background:transparent;color:var(--ink);font:inherit;font-size:1.1rem;outline:none;padding:14px 0}
+.ex-from input::placeholder{color:var(--muted)}
+.ex-from .sugg{top:calc(100% + 2px)}
+#exWhen{font:inherit;font-size:.9rem;border:1px solid var(--line);border-radius:18px;background:var(--paper);color:var(--ink);padding:0 10px;min-height:58px;max-width:36vw}
+.ex-acts{display:flex;gap:8px;margin-top:10px}
+.ex-acts:not(:has(button:not([hidden]))){display:none}
+.ex-acts button{font:inherit;font-weight:600;font-size:.88rem;padding:9px 16px;border-radius:99px;border:0;background:var(--sign);color:var(--sign-ink);cursor:pointer}
+.ex-acts button:disabled{opacity:.55;cursor:progress}
+.ex-acts #exStop{background:transparent;color:var(--ink);border:1px solid var(--line);font-weight:500}
+.ex-msg{margin:10px 0 12px;font-size:.88rem;color:var(--muted)}
+.ex-msg:empty{display:none}
+.ex-grid{grid-auto-columns:min(70%,250px);margin-top:14px}
+.fav .info b.wait{font-size:.9rem;font-weight:500;color:var(--muted)}
+.fav.best{border-color:var(--good);box-shadow:inset 0 0 0 1px var(--good)}
+.fav .best-tag{position:absolute;top:10px;left:10px;font-size:.72rem;font-weight:700;padding:4px 10px;border-radius:99px;background:var(--good);color:#fff}
+.fav .star{font-size:1.15rem;color:#fff}
+.fav .star[aria-pressed="true"]{color:var(--sign)}
+.saved-h{font-size:.75rem;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin:22px 0 8px;font-weight:600}
 .savefav{font:inherit;font-size:.82rem;padding:6px 12px;border-radius:99px;border:1px solid var(--line);background:var(--paper);color:var(--ink);cursor:pointer;margin:-6px 0 12px}
 .savefav[aria-pressed="true"]{border-color:var(--sign);background:var(--sign);color:var(--sign-ink);font-weight:600}
-@media (max-width:520px){.fav-add{grid-template-columns:1fr 1fr}.fav-add button{grid-column:1/-1}}
 
 /* Variação de preço em 12 meses */
 .trend{background:var(--paper);border:1px solid var(--line);border-radius:14px;padding:20px;display:grid;gap:16px;min-width:0}
@@ -279,15 +292,26 @@ footer{color:var(--muted);font-size:.8rem;max-width:68ch}
   </section>
 
   <section class="favs" id="favs" aria-labelledby="favsTitle">
-    <div class="favs-head"><h2 id="favsTitle">Suas rotas</h2></div>
-    <p class="sub" style="margin:2px 0 12px">Os trechos que você quer acompanhar. Toque numa rota para buscar as passagens. Ficam salvas só neste navegador.</p>
-    <div class="fav-grid" id="favList"></div>
-    <form class="fav-add" id="favForm" autocomplete="off">
-      <div class="field combo"><label for="favFrom">Saindo de</label><input id="favFrom" placeholder="Ex.: São Paulo" spellcheck="false" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="favFromList"><ul class="sugg" id="favFromList" role="listbox" aria-label="Sugestões de origem" hidden></ul></div>
-      <div class="field combo"><label for="favTo">Indo para</label><input id="favTo" placeholder="Ex.: Lisboa" spellcheck="false" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="favToList"><ul class="sugg" id="favToList" role="listbox" aria-label="Sugestões de destino" hidden></ul></div>
-      <button type="submit">Adicionar rota</button>
-      <p class="msg" id="favMsg" aria-live="polite"></p>
-    </form>
+    <h2 class="hero" id="favsTitle">Para onde vamos viajar?</h2>
+    <p class="sub" style="margin:6px 0 14px">Diga de onde você sai e o Radar procura as passagens mais baratas para os destinos mais procurados.</p>
+    <div class="ex-bar">
+      <div class="combo ex-from">
+        <label class="sr" for="exFrom">Saindo de</label>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+        <input id="exFrom" placeholder="De onde você sai?" autocomplete="off" spellcheck="false" enterkeyhint="search" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="exFromList">
+        <ul class="sugg" id="exFromList" role="listbox" aria-label="Cidades de partida" hidden></ul>
+      </div>
+      <select id="exWhen" aria-label="Quando">
+        <option value="14">Em 2 semanas</option><option value="30" selected>Em 1 mês</option><option value="60">Em 2 meses</option><option value="90">Em 3 meses</option>
+      </select>
+    </div>
+    <div class="ex-acts"><button type="button" id="exGo" hidden>Buscar preços agora</button><button type="button" id="exStop" hidden>Parar</button></div>
+    <p class="ex-msg" id="exMsg" aria-live="polite"></p>
+    <div class="fav-grid ex-grid" id="exList"></div>
+    <div id="savedWrap" hidden>
+      <h3 class="saved-h">Rotas salvas</h3>
+      <div class="fav-grid" id="favList"></div>
+    </div>
   </section>
 
   <section class="pass" id="form" aria-label="Dados da viagem">
@@ -830,7 +854,7 @@ function setupCombo(id){
       : `<li class="none">Nenhum aeroporto encontrado. Use o código de 3 letras, se souber.</li>`;
     list.hidden = false; inp.setAttribute("aria-expanded","true"); paint();
   };
-  const pick = c => { inp.value = c; close(); render(); };
+  const pick = c => { inp.value = c; close(); render(); inp.dispatchEvent(new Event("change")); };
   inp.addEventListener("input", () => { open(); render(); });
   inp.addEventListener("focus", () => inp.select());
   inp.addEventListener("keydown", e => {
@@ -846,7 +870,7 @@ function setupCombo(id){
     close(); render();
   }, 120));
 }
-setupCombo("from"); setupCombo("to"); setupCombo("favFrom"); setupCombo("favTo");
+setupCombo("from"); setupCombo("to"); setupCombo("exFrom");
 ["dep","ret","pax","cabin"].forEach(id=>$(id).addEventListener("change",()=>{ if($("dep").value&&$("ret").value<$("dep").value&&!oneWay) $("ret").value=addDays($("dep").value,7); render();}));
 $("rt").onclick=()=>{oneWay=false;render();}; $("ow").onclick=()=>{oneWay=true;render();};
 $("swap").onclick=()=>{const a=$("from").value;$("from").value=$("to").value;$("to").value=a;render();};
@@ -888,6 +912,12 @@ function renderDeals(){
       </div>
     </article>`; }).join("");
 }
+// ---- Para onde vamos viajar? Destinos mais baratos a partir da origem ----
+const EX_DESTS = ["GIG","SSA","LIS","REC","EZE","FOR","MCO","FLN","SCL","NAT","GRU","MIA","MCZ","CUN","IGU","CDG"];
+const EX_KEY = "radar-explorar", EX_ORIG = "radar-origem";
+let exOrigin = null, exData = null, exRun = null, exPending = false, exMcp = null, exReady = false;
+try { const o = localStorage.getItem(EX_ORIG); if(AIRPORTS[o]) exOrigin = o; } catch(_) {}
+try { const j = JSON.parse(localStorage.getItem(EX_KEY)); if(j && j.key && Date.now()-j.at < LP_TTL) exData = j; } catch(_) {}
 // ---- Suas rotas (salvas só neste navegador) ----
 const FAV_KEY = "radar-rotas";
 let favs = [];
@@ -900,12 +930,13 @@ function favPrice(r){
     const vs = Object.values(livePrices.prices).map(p => p.v);
     if(vs.length) return {txt: brlExact(Math.min(...vs)), note: `nos sites às ${hhmm(livePrices.at)}`};
   }
+  if(exData && exData.key.startsWith(r.from+"|") && exData.prices[r.to]) return {txt: brlExact(exData.prices[r.to]), note: `às ${hhmm(exData.at)}`};
   const d = activeDeals("cash").find(d => d.fill[0] === r.from && d.fill[1] === r.to);
   if(d) return {txt: d.price, note: "em promoção"};
   return null;
 }
 function renderFavs(){
-  $("favList").hidden = !favs.length;
+  $("savedWrap").hidden = !favs.length;
   $("favList").innerHTML = favs.map((r,i) => {
     const pr = favPrice(r);
     return `<article class="fav"><button type="button" class="go" data-f="${i}" aria-label="Buscar ${esc(cityOf(r.from))} para ${esc(cityOf(r.to))}">
@@ -913,11 +944,10 @@ function renderFavs(){
       <div class="info">${pr ? `<b>${pr.txt}</b><span>${pr.note} · ${r.from} → ${r.to}</span>` : `<b>${r.from} → ${r.to}</b><span>Toque para ver os preços</span>`}</div>
     </button><button type="button" class="rm" data-rm="${i}" aria-label="Remover ${esc(cityOf(r.from))} para ${esc(cityOf(r.to))}">×</button></article>`;
   }).join("");
-  if($("favEmpty")) $("favEmpty").remove();
-  if(!favs.length) $("favList").insertAdjacentHTML("afterend", `<p class="fav-empty" id="favEmpty">Você ainda não salvou nenhuma rota. Escolha a origem e o destino abaixo, ou toque em "Salvar nas minhas rotas" depois de uma busca.</p>`);
   const s = state(), on = s.from && s.to && isFav(s.from, s.to);
   $("saveFav").setAttribute("aria-pressed", !!on);
   $("saveFav").textContent = on ? "★ Nas suas rotas" : "☆ Salvar nas minhas rotas";
+  if(exReady) renderExplore();
 }
 function addFav(a, z){
   if(!a || !z) return "Escolha a origem e o destino na lista.";
@@ -926,8 +956,10 @@ function addFav(a, z){
   favs.unshift({from:a, to:z}); favs = favs.slice(0, 12); saveFavs(); renderFavs();
   return `${cityOf(a)} → ${cityOf(z)} adicionada.`;
 }
-const goRoute = (a, z) => {
-  $("from").value = a; $("to").value = z; render();
+const goRoute = (a, z, dep, ret) => {
+  $("from").value = a; $("to").value = z;
+  if(dep){ oneWay = false; $("dep").value = dep; $("ret").value = ret; }
+  render();
   $("form").scrollIntoView({behavior:matchMedia("(prefers-reduced-motion: reduce)").matches?"auto":"smooth",block:"start"});
 };
 $("favList").addEventListener("click", e => {
@@ -935,17 +967,115 @@ $("favList").addEventListener("click", e => {
   if(rm){ favs.splice(+rm.dataset.rm, 1); saveFavs(); renderFavs(); return; }
   const g = e.target.closest("[data-f]"); if(g){ const r = favs[+g.dataset.f]; goRoute(r.from, r.to); }
 });
-$("favForm").addEventListener("submit", e => {
-  e.preventDefault();
-  const msg = addFav(codeOf($("favFrom").value), codeOf($("favTo").value));
-  $("favMsg").textContent = msg;
-  if(/adicionada/.test(msg)){ $("favFrom").value = ""; $("favTo").value = ""; }
-});
 $("saveFav").onclick = () => {
   const s = state(); if(!s.from || !s.to) return;
   if(isFav(s.from, s.to)){ favs = favs.filter(r => !(r.from === s.from && r.to === s.to)); saveFavs(); renderFavs(); }
   else addFav(s.from, s.to);
 };
+const exDests = o => EX_DESTS.filter(z => z !== o && cityOf(z) !== cityOf(o)).slice(0, 10);
+const exDates = () => { const dep = addDays(ymd(today), +$("exWhen").value); return {dep, ret: addDays(dep, 7)}; };
+const exKey = o => { const d = exDates(); return `${o}|${d.dep}|${d.ret}`; };
+const dealNum = t => +String(t).replace(/[^\d]/g, "");
+function exPriceOf(o, z){
+  const mine = exData && exData.key === exKey(o);
+  if(mine && exData.prices[z]) return {v: exData.prices[z], txt: brlExact(exData.prices[z]), note: "ida e volta, 1 adulto"};
+  if(mine && exData.status[z] === "run") return {wait: "Buscando preço…"};
+  const d = activeDeals("cash").find(d => d.fill[0] === o && d.fill[1] === z);
+  if(d) return {v: dealNum(d.price), txt: d.price, note: "em promoção"};
+  if(mine && exData.status[z] === "no") return {wait: "Sem preço encontrado"};
+  return null;
+}
+function renderExplore(){
+  const o = exOrigin;
+  if(document.activeElement !== $("exFrom")) $("exFrom").value = o ? `${cityOf(o)} (${o})` : "";
+  if(!o){ $("exList").innerHTML = exListHTML = ""; return; }
+  const {dep, ret} = exDates();
+  const cs = exDests(o).map((z,i) => ({z, i, p: exPriceOf(o, z)}))
+    .sort((a,b) => (((a.p && a.p.v) || Infinity) - ((b.p && b.p.v) || Infinity)) || a.i - b.i);
+  const best = cs.filter(c => c.p && c.p.v).length > 1 ? cs[0].z : null;
+  const html = cs.map(({z,p}) => {
+    const fav = isFav(o, z);
+    return `<article class="fav${z===best?" best":""}"><button type="button" class="go" data-ex="${z}" aria-label="Ver passagens de ${esc(cityOf(o))} para ${esc(cityOf(z))}">
+      ${photoBlock(z, {orig: cityOf(o), flag: flagFor(z)})}
+      <div class="info">${p && p.v ? `<b>${p.txt}</b><span>${p.note === "em promoção" ? "em promoção · ver datas" : `${p.note} · ida ${fmtBR(dep).slice(0,5)}`}</span>` : `<b class="wait">${p ? p.wait : "Toque para ver os preços"}</b><span>${o} → ${z} · ida ${fmtBR(dep).slice(0,5)}, volta ${fmtBR(ret).slice(0,5)}</span>`}</div>
+    </button>${z===best?'<span class="best-tag">mais barato</span>':""}<button type="button" class="rm star" data-star="${z}" aria-pressed="${fav}" aria-label="${fav?"Remover das":"Salvar nas"} rotas salvas">${fav?"★":"☆"}</button></article>`;
+  }).join("");
+  // Só troca o HTML quando algo mudou, para não perder um toque em andamento
+  if(html !== exListHTML){ exListHTML = html; $("exList").innerHTML = html; }
+}
+let exListHTML = "";
+const exMsg = t => { $("exMsg").textContent = t; };
+function exIdleMsg(){
+  if(exRun) return;
+  if(!exOrigin) return exMsg("");
+  if(exData && exData.key === exKey(exOrigin) && Object.keys(exData.prices).length) return exMsg(`Preços de ${hhmm(exData.at)}, do mais barato para o mais caro. Toque num destino para comprar direto na companhia.`);
+  exMsg(exMcp ? "" : "Para o Radar buscar os preços sozinho, abra esta página no app Claude para computador. Aqui, toque num destino para ver as passagens direto nas companhias.");
+}
+function exSetOrigin(c){
+  if(!c || c === exOrigin) return;
+  exOrigin = c; try { localStorage.setItem(EX_ORIG, c); } catch(_) {}
+  renderExplore(); exIdleMsg(); exStart();
+}
+function exStart(){
+  if(!exMcp || !exOrigin) return;
+  if(exRun){ exRun.stop = true; exPending = true; return; }
+  exSearch();
+}
+async function exSearch(){
+  const o = exOrigin, {dep, ret} = exDates(), dests = exDests(o);
+  exData = {key: exKey(o), at: Date.now(), prices:{}, status: Object.fromEntries(dests.map(z => [z, "run"]))};
+  exRun = {stop:false}; $("exGo").disabled = true; $("exStop").hidden = false; renderExplore();
+  let tab, err = null, found = 0;
+  try{
+    for(const [n, z] of dests.entries()){
+      if(exRun.stop) break;
+      exMsg(`Procurando passagens para ${cityOf(z)} (${n+1} de ${dests.length})…`);
+      const url = `https://www.google.com/travel/flights?hl=pt-BR&curr=BRL&q=${encodeURIComponent(`Flights from ${o} to ${z} on ${dep} through ${ret}`)}`;
+      if(tab === undefined){ const r = await exMcp.callTool(BROWSER, "preview_start", {url}, {cache:false}); tab = tabIdOf(r); }
+      else await exMcp.callTool(BROWSER, "navigate", tab === null ? {url} : {url, tabId:tab}, {cache:false});
+      let v = null;
+      for(let a = 0; a < 4 && v === null && !exRun.stop; a++){
+        await sleep(liveWait(a));
+        let r;
+        try { r = await exMcp.callTool(BROWSER, "get_page_text", tab === null ? {} : {tabId:tab}, {cache:false}); }
+        catch(e){ if(e && e.retryable && a < 3){ await sleep(Math.min(e.retryAfterMs||2000, 8000)); continue; } throw e; }
+        v = minPrice(textOf(r));
+      }
+      if(exRun.stop && v === null) break;
+      exData.status[z] = v ? "ok" : "no"; if(v){ exData.prices[z] = v; found++; }
+      renderExplore();
+    }
+  } catch(e){ err = e || {}; }
+  Object.keys(exData.status).forEach(z => { if(exData.status[z] === "run") exData.status[z] = ""; });
+  exData.at = Date.now();
+  try { localStorage.setItem(EX_KEY, JSON.stringify({...exData, status:{}})); } catch(_) {}
+  const stopped = exRun.stop;
+  exRun = null; $("exGo").disabled = false; $("exStop").hidden = true;
+  renderFavs();
+  if(exPending){ exPending = false; return exSearch(); }
+  if(err) exMsg((ERR_TXT[err.code] || `Não consegui concluir a busca (${err.code || "erro desconhecido"}).`) + (found ? ` Antes disso encontrei ${found} preços.` : ""));
+  else if(stopped) exMsg(`Busca interrompida. ${found} ${found===1?"preço encontrado":"preços encontrados"}.`);
+  else if(!found) exMsg("Não apareceram preços agora. Os sites podem ter pedido verificação; tente de novo em instantes ou toque num destino para ver nas companhias.");
+  else exMsg(`Pronto: ${found} destinos com preço às ${hhmm(exData.at)}, ida ${fmtBR(dep).slice(0,5)} e volta ${fmtBR(ret).slice(0,5)}, do mais barato para o mais caro. Toque num destino para comprar direto na companhia.`);
+}
+$("exFrom").addEventListener("change", () => exSetOrigin(codeOf($("exFrom").value)));
+$("exFrom").addEventListener("blur", () => setTimeout(() => { const c = codeOf($("exFrom").value); if(c && c !== exOrigin) exSetOrigin(c); else renderExplore(); }, 160));
+$("exWhen").addEventListener("change", () => { renderExplore(); exIdleMsg(); exStart(); });
+$("exGo").onclick = () => exStart();
+$("exStop").onclick = () => { if(exRun){ exRun.stop = true; exPending = false; exMsg("Parando…"); } };
+$("exList").addEventListener("click", e => {
+  const st = e.target.closest("[data-star]");
+  if(st){ const z = st.dataset.star; if(isFav(exOrigin, z)){ favs = favs.filter(r => !(r.from === exOrigin && r.to === z)); saveFavs(); renderFavs(); } else addFav(exOrigin, z); return; }
+  const g = e.target.closest("[data-ex]"); if(g){ const {dep, ret} = exDates(); goRoute(exOrigin, g.dataset.ex, dep, ret); }
+});
+(async () => {
+  let ok = false, mcp = null;
+  try { mcp = window.claude && window.claude.use ? await window.claude.use("mcp") : null; } catch(e) { mcp = null; }
+  if(mcp){ try { const r = await mcp.listTools(BROWSER); ok = (r.servers||[]).some(x => x.server === BROWSER); } catch(e) { ok = false; } }
+  exMcp = ok ? mcp : null;
+  $("exGo").hidden = !ok;
+  exIdleMsg();
+})();
 $("tabCash").onclick=()=>{dealTab="cash";renderDeals();};
 $("tabMiles").onclick=()=>{dealTab="miles";renderDeals();};
 // Trecho de compra de uma oferta: data da oferta (milhas, só ida) ou as datas do formulário
@@ -1351,7 +1481,8 @@ addEventListener("resize", () => { clearTimeout(tResize); tResize = setTimeout((
   $("credits").hidden = !ks.length;
   $("creditList").innerHTML = ks.map(k => { const p = PHOTOS[k]; return `<li>${esc(p.n)}: ${esc(p.a)}, ${p.u?`<a href="${esc(p.u)}" target="_blank" rel="noopener">${esc(p.l)}</a>`:esc(p.l)}, via Wikimedia Commons</li>`; }).join("");
 })();
-renderDeals(); render(); renderFavs(); calc(); renderTrend();
+if(!exOrigin) exOrigin = state().from || null;
+exReady = true; renderDeals(); render(); renderFavs(); exIdleMsg(); calc(); renderTrend();
 </script>
 </body>
 </html>

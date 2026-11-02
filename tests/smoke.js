@@ -118,30 +118,52 @@ const assert = (c,m) => { console.log((c?'PASS ':'FAIL ')+m); if(!c) process.exi
   assert(errsL.length===0, 'no page errors with live prices '+errsL.join(';'));
   // ---- Suas rotas ----
   await pl.evaluate(() => localStorage.removeItem('radar-rotas')); await pl.reload(); await pl.waitForTimeout(300);
-  assert(await pl.$('#favEmpty') !== null, 'empty routes message');
-  await pl.fill('#favFrom','recife'); await pl.dispatchEvent('#favFrom','input'); await pl.keyboard.press('Enter');
-  await pl.fill('#favTo','lisboa'); await pl.dispatchEvent('#favTo','input'); await pl.keyboard.press('Enter');
-  await pl.click('#favForm button[type=submit]');
-  let favTxt = await pl.$$eval('.fav .city', a => a.map(x => x.textContent.trim()));
-  assert(favTxt.length===1 && /Lisboa/.test(favTxt[0]), 'route added from form: '+favTxt+' / '+await pl.textContent('#favMsg'));
-  await pl.click('#favForm button[type=submit]');
-  assert(/Escolha/.test(await pl.textContent('#favMsg')), 'empty form asks to choose');
+  assert(await pl.isHidden('#savedWrap'), 'saved routes hidden when empty');
   // CGH→SSA tem preço lido nos sites: salvar pelo botão da busca mostra o preço no cartão
   await pl.click('#saveFav');
   assert(await pl.getAttribute('#saveFav','aria-pressed')==='true', 'save current search toggles on');
   await pl.reload(); await pl.waitForTimeout(300);
-  const favs = await pl.$$eval('.fav', a => a.map(x => x.querySelector('.city').textContent.trim()+' | '+x.querySelector('.info').textContent.trim()));
-  assert(favs.length===2 && /Salvador/.test(favs[0]) && /R\$\s980/.test(favs[0]) && /Lisboa/.test(favs[1]), 'routes persist, newest first, with site price: '+favs.join(' || '));
-  await pl.click('.fav button[data-f="1"]');
-  const st2 = await pl.evaluate(() => from.value+'>'+to.value);
-  assert(st2==='REC>LIS', 'tapping a route fills the search: '+st2);
-  await pl.click('.fav button[data-rm="1"]');
-  assert((await pl.$$('.fav')).length===1, 'route removed');
+  let favs = await pl.$$eval('#favList .fav', a => a.map(x => x.querySelector('.city').textContent.trim()+' | '+x.querySelector('.info').textContent.trim()));
+  assert(favs.length===1 && /Salvador/.test(favs[0]) && /R\$\s980/.test(favs[0]), 'saved route persists with site price: '+favs.join(' || '));
   // promoções: foto grande com destino, origem e preço
   const deal = await pl.$eval('.deal', x => ({city:x.querySelector('.city').textContent.trim(), orig:x.querySelector('.orig').textContent.trim(), price:x.querySelector('.price').textContent}));
   assert(deal.city.startsWith('Salvador') && /Saindo de várias cidades/.test(deal.orig) && /R\$ 267/.test(deal.price), 'deal card shows destination, origin and price: '+JSON.stringify(deal));
   const wide = await pl.evaluate(() => document.documentElement.scrollWidth <= innerWidth);
   assert(wide, 'no horizontal page scroll at 375px');
   assert(errsL.length===0, 'no page errors with routes '+errsL.join(';'));
+  // ---- Para onde vamos viajar? origem → destinos mais baratos ----
+  const ctxEx = await b.newContext({viewport:{width:375,height:760}});
+  await ctxEx.addInitScript(fixClock('2026-11-02T12:00:00'));
+  await ctxEx.addInitScript(() => {
+    window.RADAR_WAIT_MS = 5;
+    const PRICE = {SSA:'R$ 612', LIS:'R$ 3.480', GIG:'R$ 389', REC:'R$ 701,40', EZE:'R$ 1.120', MIA:'R$ 2.950'};
+    let cur = ''; window.__urls = [];
+    window.claude = {use: async cap => cap === 'mcp' ? {
+      listTools: async () => ({servers:[{server:'host:claude_browser'}]}),
+      callTool: async (srv, tool, args) => {
+        if(args && args.url){ cur = decodeURIComponent(args.url); window.__urls.push(cur); return {payload:{tabId:3}}; }
+        const m = cur.match(/ to ([A-Z]{3}) on/); return {content:[{type:'text', text: m && PRICE[m[1]] ? 'Melhores voos a partir de '+PRICE[m[1]] : 'Sem resultados'}]};
+      }} : null};
+  });
+  const px = await ctxEx.newPage(); const errsX = []; px.on('pageerror', e => errsX.push(e.message));
+  await px.goto(url); await px.waitForTimeout(300);
+  assert((await px.textContent('#favsTitle')).trim()==='Para onde vamos viajar?', 'headline shown');
+  await px.fill('#exFrom','curitiba'); await px.dispatchEvent('#exFrom','input'); await px.keyboard.press('Enter');
+  await px.waitForFunction(() => !exRun && Object.keys((exData||{}).prices||{}).length > 0, null, {timeout:15000});
+  const ex = await px.$$eval('#exList .fav', a => a.map(x => x.querySelector('.city').textContent.trim().split(' ')[0]+':'+x.querySelector('.info b').textContent.trim()));
+  assert(/^Rio:R\$\s389$/.test(ex[0]) && /^Salvador:R\$\s612$/.test(ex[1]) && /^Recife:R\$\s701,40$/.test(ex[2]), 'choosing origin searches automatically, cheapest first: '+ex.slice(0,4).join(' | '));
+  assert(ex.length===10 && /Toque|Sem preço/.test(ex[9]), 'ten destinations, unpriced last: '+ex[9]);
+  const q = await px.evaluate(() => window.__urls[0]);
+  assert(/Flights from CWB to GIG on 2026-12-02 through 2026-12-09/.test(q), 'searches from chosen origin, default 1 month ahead, 7 days: '+q);
+  assert(await px.$eval('#exList .fav', x => x.classList.contains('best')), 'cheapest destination highlighted');
+  await px.click('#exList .fav button[data-ex="SSA"]');
+  const sx = await px.evaluate(() => [from.value,to.value,dep.value,ret.value].join(' '));
+  assert(sx==='CWB SSA 2026-12-02 2026-12-09', 'tapping a destination fills the search: '+sx);
+  await px.click('#exList button[data-star="LIS"]');
+  assert(await px.isVisible('#favList .fav') && /Lisboa/.test(await px.textContent('#favList')), 'star saves the route');
+  await px.reload(); await px.waitForTimeout(400);
+  const ex2 = await px.$$eval('#exList .fav .info b', a => a.slice(0,2).map(x => x.textContent.trim()));
+  assert(/389/.test(ex2[0]) && (await px.inputValue('#exFrom')).includes('CWB'), 'origin and prices remembered after reload: '+ex2);
+  assert(errsX.length===0, 'no page errors in explore '+errsX.join(';'));
   await b.close();
 })();
