@@ -232,6 +232,8 @@ const assert = (c,m) => { console.log((c?'PASS ':'FAIL ')+m); if(!c) process.exi
   await pa.waitForFunction(() => !exRun && exData && exData.key.startsWith('CWB|') && Object.keys(exData.prices).length >= 3, null, {timeout:8000});
   const exA = await pa.$$eval('#exList .fav', a => a.slice(0,4).map(x => x.querySelector('.city').textContent.trim().split(' ')[0]+':'+x.querySelector('.info b').textContent.trim()));
   assert(/^Rio:R\$\s350$/.test(exA[0]) && /^Salvador:R\$\s612$/.test(exA[1]) && /^Recife:R\$\s701$/.test(exA[2]) && /^Lisboa/.test(exA[3]), 'explore uses the server, cheapest first: '+exA.join(' | '));
+  const recNote = await pa.$$eval('#exList .fav', a => (a.find(x => /Recife/.test(x.querySelector('.city').textContent))||{}).textContent||'');
+  assert(/melhor de nov\/26 · ida 02\/11/.test(recNote) || /melhor de dez\/26/.test(recNote), 'month-scope destination price says which month/date: '+recNote.replace(/\s+/g,' ').trim().slice(-60));
   assert(errsA.length===0, 'no page errors with price server '+errsA.join(';'));
   await b.close();
 })();
