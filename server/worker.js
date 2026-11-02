@@ -11,7 +11,7 @@
 
 const API = "https://api.travelpayouts.com/aviasales/v3/prices_for_dates";
 const CACHE_SECONDS = 1800;
-const PRICES_VERSION = 4;  // aumente ao mudar a busca de preços: o cache antigo deixa de valer
+const PRICES_VERSION = 5;  // aumente ao mudar a busca de preços: o cache antigo deixa de valer
 // Códigos que a Travelpayouts usa para empresas do mesmo grupo
 const AIRLINE_ALIAS = { JJ: "LA", "4M": "LA", XL: "LA", LP: "LA", "4C": "LA", PZ: "LA" };
 const IATA = /^[A-Z]{3}$/, DAY = /^\d{4}-\d{2}-\d{2}$/;
@@ -45,6 +45,11 @@ export function viaOf(l) {
   const a = m[1].match(/.{3}/g);
   return a.slice(1, -1);
 }
+// Tempo total da viagem de ida em minutos, conexões incluídas (o mesmo link; 0 se não houver)
+export function totalOf(l) {
+  const m = /[?&]t=[A-Z0-9]{2}(\d{10})(\d{10})(\d{6})[A-Z]{6,}_/.exec(l || "");
+  return m ? Math.round((+m[2] - +m[1]) / 60) || +m[3] : 0;
+}
 // Menor preço por companhia
 export function cheapestByAirline(rows) {
   const out = {};
@@ -57,7 +62,7 @@ export function cheapestByAirline(rows) {
         // detalhes do voo de ida (horário local de partida, duração em minutos, aeroportos e número do voo)
         origin_airport: f.origin_airport || "", destination_airport: f.destination_airport || "",
         flight_number: f.flight_number ? `${f.airline}${f.flight_number}` : "",
-        duration: f.duration_to || (f.return_at ? null : f.duration) || null, duration_back: f.duration_back || null,
+        duration: (!f.return_at && totalOf(f.link)) || f.duration_to || (f.return_at ? null : f.duration) || null, duration_back: f.duration_back || null,
         via: f.return_at ? [] : viaOf(f.link) };
     }
   }
