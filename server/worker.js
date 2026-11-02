@@ -104,6 +104,7 @@ export async function months(env, p, now = new Date(), fetchImpl = fetch) {
 const UA = "Mozilla/5.0 (compatible; RadarDePassagens/1.0; +https://adissoncosta.github.io/ADISSONCOSTA/)";
 export const AZUL_PAGES = ["anoiteceu"];
 const OFFERS_SECONDS = 600;
+const OFFERS_VERSION = 2;  // aumente ao mudar o formato ou a leitura das ofertas
 // Nome da cidade (como aparece nos títulos) -> aeroporto principal
 const CITY_CODE = {
   "são paulo": "GRU", "rio de janeiro": "GIG", "rio": "GIG", "brasília": "BSB", "belo horizonte": "CNF", "salvador": "SSA", "recife": "REC",
@@ -238,7 +239,7 @@ export default {
     const url = new URL(req.url);
     if (url.searchParams.has("ofertas")) {
       const cache = typeof caches !== "undefined" ? caches.default : null;
-      const key = new Request("https://cache.radar/ofertas");
+      const key = new Request(`https://cache.radar/ofertas-v${OFFERS_VERSION}`);  // nova versão = cache novo
       if (cache) { const hit = await cache.match(key); if (hit) return new Response(hit.body, { status: 200, headers: { ...Object.fromEntries(hit.headers), ...h } }); }
       const data = await offers(env);
       if (cache && ctx && data.cash.length) ctx.waitUntil(cache.put(key, new Response(JSON.stringify(data), { headers: { "Content-Type": "application/json; charset=utf-8", "Cache-Control": `public, max-age=${OFFERS_SECONDS}` } })));
