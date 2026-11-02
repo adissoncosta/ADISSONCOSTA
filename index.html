@@ -933,6 +933,7 @@ function render(){
   $("cashH").textContent = lp && Object.keys(lp.prices).length ? `Pagando em reais · ${lp.src === "api" ? "menores preços encontrados" : "preços dos sites"} às ${hhmm(lp.at)}, do menor para o maior` : "Pagando em reais";
   apiPrices(s);
   $("miles").innerHTML = L.miles.map(card).join("");
+  syncTrend(s);
   renderFavs();
 }
 
@@ -1173,10 +1174,10 @@ function exIdleMsg(){
   if(exData && exData.key === exKey(exOrigin) && Object.keys(exData.prices).length) return exMsg(`Preços de ${hhmm(exData.at)}, do mais barato para o mais caro. Toque num destino para comprar direto na companhia.`);
   exMsg(exMcp || window.RADAR_API ? "" : "Para o Radar buscar os preços sozinho, abra esta página no app Claude para computador. Aqui, toque num destino para ver as passagens direto nas companhias.");
 }
-function exSetOrigin(c){
+function exSetOrigin(c, search = true){
   if(!c || c === exOrigin) return;
   exOrigin = c; try { localStorage.setItem(EX_ORIG, c); } catch(_) {}
-  renderExplore(); exIdleMsg(); exStart();
+  renderExplore(); exIdleMsg(); if(search) exStart();
 }
 function exStart(){
   if((!exMcp && !window.RADAR_API) || !exOrigin) return;
@@ -1319,6 +1320,25 @@ const tMax = new Date(tToday); tMax.setFullYear(tMax.getFullYear()+1);
 { const d = new Date(tToday); d.setDate(d.getDate()+30); $("tDep").value = ymd(d); }
 $("tDep").min = ymd(tToday); $("tDep").max = ymd(tMax);
 
+// "Preço ao longo do ano" acompanha a busca principal: mesmo trecho, data da ida e duração parecida.
+// Se a pessoa mudar só o gráfico, vale até a próxima mudança na busca de cima.
+let tSynced = "", tReady = false;
+const T_DAYS = [3,5,7,10,14,21,30];
+function syncTrend(s){
+  if(!AIRPORTS[s.from] || !AIRPORTS[s.to] || s.from === s.to) return;
+  const n = s.ret ? Math.round((new Date(s.ret+"T12:00") - new Date(s.dep+"T12:00")) / 864e5) : 0;
+  const days = s.ret ? T_DAYS.reduce((a,b) => Math.abs(b-n) < Math.abs(a-n) ? b : a) : 0;
+  const sig = [s.from, s.to, s.dep, days].join("|");
+  if(sig === tSynced) return;
+  // a partida da busca vira também a partida de "Para onde vamos viajar?" (depois de a página carregar)
+  // Com servidor de preços busca na hora; no modo navegador do app Claude só troca a cidade, para não
+  // disputar o navegador com a consulta de preços das companhias.
+  if(tReady && tSynced && tSynced.split("|")[0] !== s.from && s.from !== exOrigin) exSetOrigin(s.from, !!window.RADAR_API);
+  tSynced = sig;
+  $("tFrom").value = s.from; $("tTo").value = s.to; $("tDays").value = String(days);
+  if(s.dep && s.dep >= ymd(tToday) && s.dep <= ymd(tMax)) $("tDep").value = s.dep;
+  if(tReady) renderTrend();
+}
 function tState(){ return {from:$("tFrom").value, to:$("tTo").value, dep:$("tDep").value, days:+$("tDays").value}; }
 const tKey = s => `radar-precos:${s.from}-${s.to}:${s.days?"iv":"ida"}`;
 function tLinks(s, dep){
@@ -1704,7 +1724,7 @@ addEventListener("resize", () => { clearTimeout(tResize); tResize = setTimeout((
   $("credits").hidden = !ks.length && !Object.keys(LOGOS).length;
 })();
 if(!exOrigin) exOrigin = state().from || null;
-exReady = true; renderDeals(); render(); renderFavs(); exIdleMsg(); calc(); renderTrend();
+exReady = true; renderDeals(); render(); renderFavs(); exIdleMsg(); calc(); renderTrend(); tReady = true;
 // com servidor de preços, já busca os destinos mais baratos da origem ao abrir a página
 if(window.RADAR_API && exOrigin && !(exData && exData.key === exKey(exOrigin))) exStart();
 </script>

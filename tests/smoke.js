@@ -266,8 +266,7 @@ const assert = (c,m) => { console.log((c?'PASS ':'FAIL ')+m); if(!c) process.exi
   await pa.waitForFunction(() => !exRun && exData && exData.key.startsWith('CWB|ano') && Object.keys(exData.prices).length >= 3, null, {timeout:8000});
   const exY = await pa.$$eval('#exList .fav', a => a.slice(0,3).map(x => x.querySelector('.city').textContent.trim().split(' ')[0]+':'+x.querySelector('.info b').textContent.trim()+':'+x.querySelector('.info span').textContent.trim()));
   assert(/^Rio:R\$\s299:mais barato do ano · ida 14\/03\/27 · volta 21\/03$/.test(exY[0]) && /^Salvador:R\$\s540:.*02\/05\/27/.test(exY[1]) && /^Lisboa:R\$\s2\.990/.test(exY[2]), 'explore finds the cheapest of the next 12 months, with its date: '+exY.join(' | '));
-  const qy = apiCalls.find(q => q.from==='CWB' && q.to==='GIG' && q.days);
-  assert(qy && qy.days==='7' && !qy.dep, 'year mode asks the server for 12 months');
+  assert(apiCalls.some(q => q.from==='CWB' && q.to==='GIG' && q.days==='7' && !q.dep), 'year mode asks the server for 12 months');
   assert(/próximos 12 meses/.test(await pa.textContent('#exMsg')), 'message says next 12 months: '+await pa.textContent('#exMsg'));
   await pa.click('#exList .fav button[data-ex="GIG"]');
   const fy = await pa.evaluate(() => [from.value,to.value,dep.value,ret.value].join(' '));
@@ -280,14 +279,23 @@ const assert = (c,m) => { console.log((c?'PASS ':'FAIL ')+m); if(!c) process.exi
   assert(/^Rio:R\$\s350$/.test(exA[0]) && /^Salvador:R\$\s612$/.test(exA[1]) && /^Recife:R\$\s701$/.test(exA[2]) && /^Lisboa/.test(exA[3]), 'fixed date still works, cheapest first: '+exA.join(' | '));
   const recNote = await pa.$$eval('#exList .fav', a => (a.find(x => /Recife/.test(x.querySelector('.city').textContent))||{}).textContent||'');
   assert(/melhor de nov\/26 · ida 02\/11/.test(recNote) || /melhor de dez\/26/.test(recNote), 'month-scope destination price says which month/date: '+recNote.replace(/\s+/g,' ').trim().slice(-60));
-  // Preço ao longo do ano: os 12 meses se preenchem sozinhos (trecho padrão GRU → LIS, 10 dias)
-  // espera os pedidos de preço em andamento terminarem antes de recarregar (o WebKit acusa pedido interrompido)
+  // Preço ao longo do ano: acompanha a busca de cima e preenche os 12 meses sozinho
   await pa.waitForLoadState('networkidle'); await pa.waitForTimeout(500);
   await pa.reload(); await pa.waitForTimeout(400);
+  await pa.waitForFunction(() => (document.getElementById('tp-2027-03')||{}).value === '299', null, {timeout:8000}).catch(()=>{});
+  const tr = await pa.evaluate(() => ({route: [tFrom.value, tTo.value, tDep.value, tDays.value].join(' '), v: document.getElementById('tp-2027-03').value, note: document.querySelector('.mo-s[data-s="2027-03"]').textContent, dez: document.getElementById('tp-2026-12').value+' '+document.querySelector('.mo-s[data-s="2026-12"]').textContent, empty: document.querySelector('.mo-s[data-s="2027-01"]').textContent, axis: document.querySelectorAll('#tChart .axis').length}));
+  assert(tr.route === 'CWB GIG 2027-03-14 7', 'yearly chart follows the search above (route, date, ~duration): '+tr.route);
+  assert(tr.v === '299' && /GOL · ida 14\/03/.test(tr.note) && /^350 GOL · ida 05\/12/.test(tr.dez) && /sem preço recente/.test(tr.empty) && tr.axis > 0, 'each month filled by itself with airline and day: '+JSON.stringify(tr));
+  // mudar a busca de cima muda o gráfico
+  await pa.fill('#from','GRU'); await pa.dispatchEvent('#from','input');
+  await pa.fill('#to','LIS'); await pa.dispatchEvent('#to','input');
+  await pa.fill('#dep','2026-12-02'); await pa.dispatchEvent('#dep','change');
+  await pa.fill('#ret','2026-12-12'); await pa.dispatchEvent('#ret','change');
   await pa.waitForFunction(() => (document.getElementById('tp-2027-09')||{}).value === '2.990', null, {timeout:8000}).catch(()=>{});
-  const tq = apiCalls.find(q => q.from==='GRU' && q.to==='LIS' && q.days==='10');
-  const tAuto = await pa.evaluate(() => ({v: document.getElementById('tp-2027-09').value, note: document.querySelector('.mo-s[data-s="2027-09"]').textContent, other: document.querySelector('.mo-s[data-s="2026-12"]').textContent, axis: document.querySelectorAll('#tChart .axis').length}));
-  assert(tq && tAuto.v === '2.990' && /TAP Air Portugal · ida 20\/09/.test(tAuto.note) && /sem preço recente/.test(tAuto.other) && tAuto.axis > 0, 'yearly chart fills each month by itself, with airline and day: '+JSON.stringify(tAuto));
+  const tr2 = await pa.evaluate(() => ({route: [tFrom.value, tTo.value, tDep.value, tDays.value].join(' '), v: document.getElementById('tp-2027-09').value, note: document.querySelector('.mo-s[data-s="2027-09"]').textContent}));
+  assert(tr2.route === 'GRU LIS 2026-12-02 10' && tr2.v === '2.990' && /TAP Air Portugal · ida 20\/09/.test(tr2.note), 'changing the search updates the yearly chart: '+JSON.stringify(tr2));
+  assert(apiCalls.some(q => q.from==='GRU' && q.to==='LIS' && q.days==='10'), 'chart asks the server for the new route');
+  assert(await pa.evaluate(() => exOrigin) === 'GRU' && /GRU/.test(await pa.inputValue('#exFrom')), 'departure city of the search also drives "Para onde vamos viajar?"');
   await pa.fill('#tp-2026-12','1500'); await pa.dispatchEvent('#tp-2026-12','change');
   await pa.click('#tAutoBtn'); await pa.waitForTimeout(600);
   const tMan = await pa.evaluate(() => ({v: document.getElementById('tp-2026-12').value, note: document.querySelector('.mo-s[data-s="2026-12"]').textContent, auto: document.getElementById('tp-2027-09').value}));
