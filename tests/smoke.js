@@ -116,5 +116,32 @@ const assert = (c,m) => { console.log((c?'PASS ':'FAIL ')+m); if(!c) process.exi
   const after = await pl.$$eval('#cash strong', a => a.map(x => x.childNodes[0].textContent));
   assert(after.join()==='GOL,LATAM,Azul', 'site prices kept after reload: '+after);
   assert(errsL.length===0, 'no page errors with live prices '+errsL.join(';'));
+  // ---- Suas rotas ----
+  await pl.evaluate(() => localStorage.removeItem('radar-rotas')); await pl.reload(); await pl.waitForTimeout(300);
+  assert(await pl.$('#favEmpty') !== null, 'empty routes message');
+  await pl.fill('#favFrom','recife'); await pl.dispatchEvent('#favFrom','input'); await pl.keyboard.press('Enter');
+  await pl.fill('#favTo','lisboa'); await pl.dispatchEvent('#favTo','input'); await pl.keyboard.press('Enter');
+  await pl.click('#favForm button[type=submit]');
+  let favTxt = await pl.$$eval('.fav .city', a => a.map(x => x.textContent.trim()));
+  assert(favTxt.length===1 && /Lisboa/.test(favTxt[0]), 'route added from form: '+favTxt+' / '+await pl.textContent('#favMsg'));
+  await pl.click('#favForm button[type=submit]');
+  assert(/Escolha/.test(await pl.textContent('#favMsg')), 'empty form asks to choose');
+  // CGH→SSA tem preço lido nos sites: salvar pelo botão da busca mostra o preço no cartão
+  await pl.click('#saveFav');
+  assert(await pl.getAttribute('#saveFav','aria-pressed')==='true', 'save current search toggles on');
+  await pl.reload(); await pl.waitForTimeout(300);
+  const favs = await pl.$$eval('.fav', a => a.map(x => x.querySelector('.city').textContent.trim()+' | '+x.querySelector('.info').textContent.trim()));
+  assert(favs.length===2 && /Salvador/.test(favs[0]) && /R\$\s980/.test(favs[0]) && /Lisboa/.test(favs[1]), 'routes persist, newest first, with site price: '+favs.join(' || '));
+  await pl.click('.fav button[data-f="1"]');
+  const st2 = await pl.evaluate(() => from.value+'>'+to.value);
+  assert(st2==='REC>LIS', 'tapping a route fills the search: '+st2);
+  await pl.click('.fav button[data-rm="1"]');
+  assert((await pl.$$('.fav')).length===1, 'route removed');
+  // promoções: foto grande com destino, origem e preço
+  const deal = await pl.$eval('.deal', x => ({city:x.querySelector('.city').textContent.trim(), orig:x.querySelector('.orig').textContent.trim(), price:x.querySelector('.price').textContent}));
+  assert(deal.city.startsWith('Salvador') && /Saindo de várias cidades/.test(deal.orig) && /R\$ 267/.test(deal.price), 'deal card shows destination, origin and price: '+JSON.stringify(deal));
+  const wide = await pl.evaluate(() => document.documentElement.scrollWidth <= innerWidth);
+  assert(wide, 'no horizontal page scroll at 375px');
+  assert(errsL.length===0, 'no page errors with routes '+errsL.join(';'));
   await b.close();
 })();

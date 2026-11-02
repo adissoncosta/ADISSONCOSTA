@@ -100,37 +100,70 @@ a.go .tag2{display:inline-block;font-size:.68rem;font-weight:600;padding:1px 6px
 .tabs{display:flex;gap:6px;margin-bottom:14px}
 .tabs button{font:inherit;font-size:.85rem;padding:6px 14px;border-radius:99px;border:1px solid var(--line);background:transparent;color:var(--ink);cursor:pointer}
 .tabs button[aria-selected="true"]{background:var(--sign);color:var(--sign-ink);border-color:var(--sign);font-weight:600}
-.deal-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,330px),1fr));gap:12px}
-.deal{background:var(--paper);border:1px solid var(--line);border-radius:12px;overflow:hidden;display:grid;grid-template-columns:clamp(88px,30%,124px) minmax(0,1fr);min-width:0}
-.deal .pic{position:relative;min-height:100%;background:#79B4E3}
-.deal .pic svg,.deal .pic img{position:absolute;inset:0;width:100%;height:100%;display:block}
-.deal .pic img{object-fit:cover}
-.dest{margin:0 0 16px;position:relative;border-radius:12px;overflow:hidden;aspect-ratio:16/7;max-width:100%;background:var(--line)}
-.dest img{width:100%;height:100%;object-fit:cover;display:block}
-.dest figcaption{position:absolute;left:0;right:0;bottom:0;padding:28px 14px 10px;color:#fff;background:linear-gradient(transparent,rgba(10,20,35,.8));display:grid;gap:2px}
-.dest figcaption strong{font-family:var(--display);font-size:1.6rem;line-height:1;text-transform:uppercase;letter-spacing:.02em}
-.dest figcaption span{font-size:.82rem;opacity:.9}
-@media (max-width:520px){.dest{aspect-ratio:4/3}}
+/* Carrossel de cartões com foto grande: destino e preço à vista */
+.deal-grid,.fav-grid{display:grid;grid-auto-flow:column;grid-auto-columns:min(86%,340px);gap:14px;overflow-x:auto;overscroll-behavior-x:contain;scroll-snap-type:x mandatory;scroll-padding-inline:2px;padding:2px 2px 10px;scrollbar-width:thin}
+.deal,.fav{scroll-snap-align:start}
+.deal{background:var(--paper);border:1px solid var(--line);border-radius:22px;overflow:hidden;display:flex;flex-direction:column;min-width:0}
+.pic{position:relative;aspect-ratio:16/11;background:#79B4E3;overflow:hidden}
+.pic svg,.pic img{position:absolute;inset:0;width:100%;height:100%;display:block}
+.pic img{object-fit:cover}
+.pic .shade{position:absolute;inset:0;background:linear-gradient(180deg,rgba(8,16,28,.35) 0%,transparent 28%,transparent 48%,rgba(8,16,28,.82) 100%)}
+.pic .chip{position:absolute;top:12px;font-size:.75rem;font-weight:600;padding:5px 11px;border-radius:99px;background:rgba(10,20,35,.62);color:#fff;-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px)}
+.pic .chip.r{right:12px}.pic .chip.l{left:12px}
+.pic .ov{position:absolute;left:16px;right:16px;bottom:20px;color:#fff;display:grid;gap:4px}
+.pic .city{margin:0;font-family:var(--body);font-weight:700;font-size:clamp(1.6rem,7vw,2rem);line-height:1.05;letter-spacing:-.01em;display:flex;align-items:center;gap:10px;text-shadow:0 1px 8px rgba(0,0,0,.35)}
+.pic .city .flag{font-size:1.5rem;line-height:1;font-family:"Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif}
+.pic .orig{font-size:.9rem;display:flex;align-items:center;gap:7px;opacity:.95}
+.pic .orig svg{position:static;width:16px;height:16px;flex:none}
+.pic .credit{position:absolute;right:10px;bottom:4px;font-size:.58rem;color:#fff;opacity:.6;max-width:60%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+figure.dest{margin:0 0 16px;position:relative;border-radius:12px;overflow:hidden;aspect-ratio:16/7;max-width:100%;background:var(--line)}
+figure.dest img{width:100%;height:100%;object-fit:cover;display:block}
+figure.dest figcaption{position:absolute;left:0;right:0;bottom:0;padding:28px 14px 10px;color:#fff;background:linear-gradient(transparent,rgba(10,20,35,.8));display:grid;gap:2px}
+figure.dest figcaption strong{font-family:var(--display);font-size:1.6rem;line-height:1;text-transform:uppercase;letter-spacing:.02em}
+figure.dest figcaption span{font-size:.82rem;opacity:.9}
+@media (max-width:520px){figure.dest{aspect-ratio:4/3}}
 .credits{color:var(--muted);font-size:.78rem}
 .credits summary{cursor:pointer}
 .credits ul{margin:8px 0 0;padding-left:18px;display:grid;gap:2px}
 .credits a{color:inherit}
-.deal .pic .cap{position:absolute;left:0;right:0;bottom:0;padding:18px 7px 7px;font-size:.68rem;font-weight:600;line-height:1.25;color:#fff;background:linear-gradient(transparent,rgba(10,20,35,.78));text-wrap:balance}
-.deal .body{padding:14px 14px 16px;display:grid;gap:8px;align-content:start;min-width:0}
-.deal .route{font-family:var(--mono);font-weight:600;font-size:.82rem;letter-spacing:.04em;color:var(--muted);display:flex;align-items:center;gap:8px}
-.deal .flags{display:inline-flex;align-items:center;gap:4px;flex:none}
-.deal .flag{font-size:1.35rem;line-height:1;font-family:"Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif}
-.deal .flags i{font-style:normal;font-size:.8rem;color:var(--muted)}
-.deal h3{margin:0;font-size:1.05rem;font-weight:600;line-height:1.3}
-.deal .price{font-family:var(--display);font-weight:700;font-size:1.9rem;line-height:1;font-variant-numeric:tabular-nums}
-.deal .price small{font-family:var(--body);font-size:.78rem;font-weight:500;color:var(--muted);margin-left:4px}
-.deal .from{font-size:.72rem;color:var(--muted);text-transform:uppercase;letter-spacing:.08em}
+.deal .body{padding:16px 18px 18px;display:flex;flex-direction:column;gap:10px;flex:1;min-width:0}
+.deal .who{display:flex;align-items:center;gap:10px;font-weight:500}
+.deal .logo{width:34px;height:34px;border-radius:10px;display:grid;place-items:center;font-family:var(--mono);font-size:.72rem;font-weight:600;color:#fff;background:var(--accent);flex:none}
+.deal .age{margin-left:auto;font-size:.8rem;color:var(--muted);white-space:nowrap}
+.deal h3{margin:0;font-size:.9rem;font-weight:500;line-height:1.35;color:var(--muted)}
+.deal .price{font-family:var(--body);font-weight:700;font-size:2.3rem;line-height:1;letter-spacing:-.02em;font-variant-numeric:tabular-nums}
+.deal .price small{font-size:.85rem;font-weight:500;color:var(--muted);margin-left:6px;letter-spacing:0}
 .deal ul{margin:0;padding:0;list-style:none;font-size:.85rem;color:var(--muted);display:grid;gap:2px}
-.deal .acts{display:flex;gap:8px;flex-wrap:wrap;margin-top:4px}
-.deal .acts button,.deal .acts a{font:inherit;font-size:.82rem;padding:6px 12px;border-radius:8px;border:1px solid var(--line);background:transparent;color:var(--ink);cursor:pointer;text-decoration:none}
-.deal .acts button,.deal .acts a.buybtn{background:var(--accent);color:var(--accent-ink);border-color:var(--accent);font-weight:600}
-.deal .acts button.alt{background:transparent;color:var(--ink);border-color:var(--line);font-weight:400}
-.badge{justify-self:start;font-size:.7rem;font-weight:600;padding:2px 8px;border-radius:4px;background:var(--bg);color:var(--ink);border:1px solid var(--line)}
+.deal .acts{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:auto;padding-top:4px}
+.deal .acts button,.deal .acts a{font:inherit;font-size:.95rem;font-weight:600;padding:12px 20px;border-radius:99px;border:0;background:var(--sign);color:var(--sign-ink);cursor:pointer;text-decoration:none;margin-left:auto}
+.deal .acts button.alt{background:transparent;color:var(--ink);border:1px solid var(--line);font-weight:500;font-size:.85rem;padding:10px 14px;margin-left:0}
+.deal .acts .tipo{font-size:.78rem;color:var(--muted)}
+/* Suas rotas */
+.favs h2{font-family:var(--display);font-weight:600;font-size:1.5rem;text-transform:uppercase;letter-spacing:.03em;margin:0}
+.favs-head{display:flex;justify-content:space-between;align-items:baseline;gap:12px;flex-wrap:wrap}
+.fav-grid{grid-auto-columns:min(62%,230px)}
+.fav{position:relative;border-radius:18px;overflow:hidden;background:var(--paper);border:1px solid var(--line);display:flex;flex-direction:column;min-width:0}
+.fav .go{all:unset;cursor:pointer;display:flex;flex-direction:column;flex:1}
+.fav .go:focus-visible{outline:2px solid var(--accent);outline-offset:-2px}
+.fav .pic{aspect-ratio:4/3}
+.fav .pic .city{font-size:1.25rem}
+.fav .pic .orig{font-size:.78rem}
+.fav .info{padding:10px 14px 12px;display:grid;gap:2px}
+.fav .info b{font-size:1.15rem;font-variant-numeric:tabular-nums}
+.fav .info span{font-size:.78rem;color:var(--muted)}
+.fav .rm{position:absolute;top:8px;right:8px;width:30px;height:30px;border-radius:50%;border:0;background:rgba(10,20,35,.62);color:#fff;font-size:1.05rem;line-height:1;cursor:pointer;display:grid;place-items:center}
+.fav-empty{margin:0;color:var(--muted);font-size:.9rem;padding:14px;border:1px dashed var(--line);border-radius:14px}
+.fav-add{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr) auto;gap:10px;align-items:end;margin-top:12px;background:var(--paper);border:1px solid var(--line);border-radius:14px;padding:14px}
+.fav-add .combo{position:relative;min-width:0}
+.fav-add .field input{font-family:var(--body)}
+.fav-add .combo .sugg{min-width:min(260px,80vw)}
+.fav-add #favTo + .sugg{left:auto;right:0}
+.fav-add button{font:inherit;font-weight:600;font-size:.9rem;padding:10px 16px;border-radius:10px;border:0;background:var(--accent);color:var(--accent-ink);cursor:pointer;height:42px}
+.fav-add .msg{grid-column:1/-1;margin:0;font-size:.82rem;color:var(--muted)}
+.fav-add .msg:empty{display:none}
+.savefav{font:inherit;font-size:.82rem;padding:6px 12px;border-radius:99px;border:1px solid var(--line);background:var(--paper);color:var(--ink);cursor:pointer;margin:-6px 0 12px}
+.savefav[aria-pressed="true"]{border-color:var(--sign);background:var(--sign);color:var(--sign-ink);font-weight:600}
+@media (max-width:520px){.fav-add{grid-template-columns:1fr 1fr}.fav-add button{grid-column:1/-1}}
 
 /* Variação de preço em 12 meses */
 .trend{background:var(--paper);border:1px solid var(--line);border-radius:14px;padding:20px;display:grid;gap:16px;min-width:0}
@@ -245,6 +278,18 @@ footer{color:var(--muted);font-size:.8rem;max-width:68ch}
     <div class="deal-grid" id="deals"></div>
   </section>
 
+  <section class="favs" id="favs" aria-labelledby="favsTitle">
+    <div class="favs-head"><h2 id="favsTitle">Suas rotas</h2></div>
+    <p class="sub" style="margin:2px 0 12px">Os trechos que você quer acompanhar. Toque numa rota para buscar as passagens. Ficam salvas só neste navegador.</p>
+    <div class="fav-grid" id="favList"></div>
+    <form class="fav-add" id="favForm" autocomplete="off">
+      <div class="field combo"><label for="favFrom">Saindo de</label><input id="favFrom" placeholder="Ex.: São Paulo" spellcheck="false" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="favFromList"><ul class="sugg" id="favFromList" role="listbox" aria-label="Sugestões de origem" hidden></ul></div>
+      <div class="field combo"><label for="favTo">Indo para</label><input id="favTo" placeholder="Ex.: Lisboa" spellcheck="false" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="favToList"><ul class="sugg" id="favToList" role="listbox" aria-label="Sugestões de destino" hidden></ul></div>
+      <button type="submit">Adicionar rota</button>
+      <p class="msg" id="favMsg" aria-live="polite"></p>
+    </form>
+  </section>
+
   <section class="pass" id="form" aria-label="Dados da viagem">
     <div class="pass-top">
       <div class="city">
@@ -289,6 +334,7 @@ footer{color:var(--muted);font-size:.8rem;max-width:68ch}
     <figure class="dest" id="dest" hidden></figure>
     <h2>Comprar direto na companhia</h2>
     <p class="summary" id="summary"></p>
+    <button type="button" class="savefav" id="saveFav" aria-pressed="false">☆ Salvar nas minhas rotas</button>
     <p class="sub">Cada botão abre o site oficial da companhia com trecho, datas, passageiros e cabine já preenchidos. É só escolher o voo e pagar.</p>
     <div class="live" id="live">
       <div class="row"><button type="button" class="lbtn" id="liveBtn" hidden>Ver preços nas companhias</button><button type="button" class="lstop" id="liveStop" hidden>Parar</button></div>
@@ -383,13 +429,6 @@ const COUNTRY = {
 // Aeroportos fora de COUNTRY que estão em AIRPORTS são brasileiros
 const countryOf = code => COUNTRY[code] || (AIRPORTS[code] ? "BR" : "");
 const emoji = cc => String.fromCodePoint(...[...cc].map(c=>127397+c.charCodeAt(0)));
-const flagOf = d => {
-  if(d.badge==="Nacional") return "";
-  const a = countryOf(d.fill[0]);
-  const z = /EUROPA/i.test(d.route) ? "EU" : countryOf(d.fill[1]);
-  if(!a || !z) return "";
-  return `<span class="flags" aria-hidden="true"><span class="flag">${emoji(a)}</span><i>→</i><span class="flag">${emoji(z)}</span></span>`;
-};
 const DEALS = {
   cash:[
     {route:"BR → BR",title:"Passagens nacionais com Azul, Gol e Latam",price:"R$ 267",unit:"ida e volta",info:["Taxas incluídas; saídas de mais de 90 cidades","Rotas e datas na tabela da fonte"],badge:"Nacional",fill:["GRU","SSA","economy"],src:MD+"/promocao/passagens-aereas-nacionais-30-10-26"},
@@ -757,6 +796,7 @@ function render(){
   $("cash").innerHTML = cs.map(card).join("");
   $("cashH").textContent = lp && Object.keys(lp.prices).length ? `Pagando em reais · preços dos sites às ${hhmm(lp.at)}, do menor para o maior` : "Pagando em reais";
   $("miles").innerHTML = L.miles.map(card).join("");
+  renderFavs();
 }
 
 function calc(){
@@ -806,30 +846,106 @@ function setupCombo(id){
     close(); render();
   }, 120));
 }
-setupCombo("from"); setupCombo("to");
+setupCombo("from"); setupCombo("to"); setupCombo("favFrom"); setupCombo("favTo");
 ["dep","ret","pax","cabin"].forEach(id=>$(id).addEventListener("change",()=>{ if($("dep").value&&$("ret").value<$("dep").value&&!oneWay) $("ret").value=addDays($("dep").value,7); render();}));
 $("rt").onclick=()=>{oneWay=false;render();}; $("ow").onclick=()=>{oneWay=true;render();};
 $("swap").onclick=()=>{const a=$("from").value;$("from").value=$("to").value;$("to").value=a;render();};
 $("chips").addEventListener("click",e=>{const b=e.target.closest("button");if(!b)return;$("from").value=b.dataset.a;$("to").value=b.dataset.b;render();});
 ["cPrice","cMiles","cTax","cCost"].forEach(id=>$(id).addEventListener("input",calc));
+const DEALS_AGE = (() => { const n = Math.round((new Date(todayYMD+"T12:00") - new Date("2026-11-01T12:00"))/864e5); return n <= 0 ? "hoje" : n === 1 ? "há 1 dia" : `há ${n} dias`; })();
+const cityOf = c => (AIRPORTS[c] || c).split(" · ")[0];
+const flagFor = (z, d) => { const cc = d && /EUROPA/i.test(d.route) ? "EU" : countryOf(z); return cc ? emoji(cc) : ""; };
+const PLANE = `<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path transform="rotate(90 12 12)" d="M21 16v-2l-8-5V3.5a1.5 1.5 0 0 0-3 0V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5z"/></svg>`;
+// Foto do destino (ou a ilustração, se ainda não houver foto) com nome, bandeira e origem por cima
+function photoBlock(z, o){
+  const sc = sceneSVG(z), ph = photoOf(z);
+  return `<div class="pic">${sc.svg}${ph?`<img src="${ph.src}" alt="" loading="lazy" onerror="this.remove()">`:""}<span class="shade"></span>`
+    + (o.chipL ? `<span class="chip l">${esc(o.chipL)}</span>` : "") + (o.chipR ? `<span class="chip r">${esc(o.chipR)}</span>` : "")
+    + `<div class="ov"><h4 class="city">${esc(cityOf(z))}${o.flag?` <span class="flag" aria-hidden="true">${o.flag}</span>`:""}</h4>`
+    + (o.orig ? `<span class="orig">${PLANE}Saindo de ${esc(o.orig)}</span>` : "") + `</div>`
+    + (ph ? `<span class="credit" title="${esc(ph.name)} · ${esc(ph.credit)}">${esc(ph.name)} · ${esc(ph.credit)}</span>` : "")
+    + `</div>`;
+}
 function renderDeals(){
   $("tabCash").setAttribute("aria-selected",dealTab==="cash");
   $("tabMiles").setAttribute("aria-selected",dealTab==="miles");
   const list = activeDeals(dealTab);
   if(!list.length){ $("deals").innerHTML = `<p class="sub" style="margin:0">As ofertas desta aba já venceram. Use a busca abaixo para encontrar os preços de hoje.</p>`; return; }
-  $("deals").innerHTML = list.map((d,i)=>`
+  $("deals").innerHTML = list.map((d,i)=>{
+    const [a,z,cab] = d.fill, multi = /^BR\b/.test(d.route);
+    const who = d.pts ? PROGRAM[d.pts].name : d.cia ? AIRLINE[d.cia].name : (d.badge === "Nacional" ? "Azul, GOL e LATAM" : "Várias companhias");
+    const ini = who.replace(/[^A-Za-zÀ-ú ]/g,"").split(/\s+/).filter(Boolean).slice(0,2).map(w=>w[0]).join("").toUpperCase();
+    const age = d.until ? `até ${fmtBR(d.until).slice(0,5)}` : d.date ? `voo em ${fmtBR(d.date).slice(0,5)}` : DEALS_AGE;
+    return `
     <article class="deal">
-      ${((sc, ph) => `<div class="pic">${sc.svg}${ph?`<img src="${ph.src}" alt="Foto: ${esc(ph.name)}" loading="lazy" title="${esc(ph.credit)}" onerror="this.remove()">`:""}<span class="cap">${esc(ph?ph.name:sc.name)}</span></div>`)(sceneSVG(d.fill[1]), photoOf(d.fill[1]))}
+      ${photoBlock(z, {orig: multi ? "várias cidades" : cityOf(a), chipR: CABIN_PT[cab], chipL: d.badge, flag: flagFor(z, d)})}
       <div class="body">
-      <span class="badge">${d.badge}</span>
-      <div class="route">${flagOf(d)}${d.route}</div>
+      <div class="who"><span class="logo" aria-hidden="true">${esc(ini)}</span><span>${esc(who)}</span><span class="age">${age}</span></div>
       <h3>${d.title}</h3>
-      <div><div class="from">A partir de</div><div class="price">${d.price}<small>${d.unit==="a partir de"?"":d.unit}</small></div></div>
-      <ul>${d.info.map(x=>`<li>${x}</li>`).join("")}${d.until===todayYMD?`<li style="color:var(--warn);font-weight:600">Último dia da oferta</li>`:""}</ul>
-      <div class="acts">${d.cia||d.pts ? `<a class="buybtn" data-buy="${i}" href="#" target="_blank" rel="noopener">${d.pts ? "Emitir no "+PROGRAM[d.pts].name : "Comprar na "+AIRLINE[d.cia].name} →</a><button type="button" class="alt" data-i="${i}">Outras companhias</button>` : `<button type="button" data-i="${i}">Ver companhias</button>`}</div>
+      <div class="price">${d.price}<small>${d.unit==="a partir de"?"a partir de":d.unit}</small></div>
+      <ul><li>${d.info[0]}</li>${d.until===todayYMD?`<li style="color:var(--warn);font-weight:600">Último dia da oferta</li>`:""}</ul>
+      <div class="acts">${d.cia||d.pts ? `<button type="button" class="alt" data-i="${i}">Outras companhias</button><a class="buybtn" data-buy="${i}" href="#" target="_blank" rel="noopener">${d.pts ? "Emitir" : "Comprar"} →</a>` : `<button type="button" data-i="${i}">Ver datas →</button>`}</div>
       </div>
-    </article>`).join("");
+    </article>`; }).join("");
 }
+// ---- Suas rotas (salvas só neste navegador) ----
+const FAV_KEY = "radar-rotas";
+let favs = [];
+try { const j = JSON.parse(localStorage.getItem(FAV_KEY)); if(Array.isArray(j)) favs = j.filter(r => r && AIRPORTS[r.from] && AIRPORTS[r.to]); } catch(_) {}
+const saveFavs = () => { try { localStorage.setItem(FAV_KEY, JSON.stringify(favs)); } catch(_) {} };
+const isFav = (a,z) => favs.some(r => r.from === a && r.to === z);
+// Melhor preço conhecido para a rota: preço lido nos sites (busca recente) ou promoção em reais do mesmo trecho
+function favPrice(r){
+  if(livePrices && livePrices.key.startsWith(`${r.from}|${r.to}|`)){
+    const vs = Object.values(livePrices.prices).map(p => p.v);
+    if(vs.length) return {txt: brlExact(Math.min(...vs)), note: `nos sites às ${hhmm(livePrices.at)}`};
+  }
+  const d = activeDeals("cash").find(d => d.fill[0] === r.from && d.fill[1] === r.to);
+  if(d) return {txt: d.price, note: "em promoção"};
+  return null;
+}
+function renderFavs(){
+  $("favList").hidden = !favs.length;
+  $("favList").innerHTML = favs.map((r,i) => {
+    const pr = favPrice(r);
+    return `<article class="fav"><button type="button" class="go" data-f="${i}" aria-label="Buscar ${esc(cityOf(r.from))} para ${esc(cityOf(r.to))}">
+      ${photoBlock(r.to, {orig: cityOf(r.from), flag: flagFor(r.to)})}
+      <div class="info">${pr ? `<b>${pr.txt}</b><span>${pr.note} · ${r.from} → ${r.to}</span>` : `<b>${r.from} → ${r.to}</b><span>Toque para ver os preços</span>`}</div>
+    </button><button type="button" class="rm" data-rm="${i}" aria-label="Remover ${esc(cityOf(r.from))} para ${esc(cityOf(r.to))}">×</button></article>`;
+  }).join("");
+  if($("favEmpty")) $("favEmpty").remove();
+  if(!favs.length) $("favList").insertAdjacentHTML("afterend", `<p class="fav-empty" id="favEmpty">Você ainda não salvou nenhuma rota. Escolha a origem e o destino abaixo, ou toque em "Salvar nas minhas rotas" depois de uma busca.</p>`);
+  const s = state(), on = s.from && s.to && isFav(s.from, s.to);
+  $("saveFav").setAttribute("aria-pressed", !!on);
+  $("saveFav").textContent = on ? "★ Nas suas rotas" : "☆ Salvar nas minhas rotas";
+}
+function addFav(a, z){
+  if(!a || !z) return "Escolha a origem e o destino na lista.";
+  if(a === z) return "Origem e destino estão iguais.";
+  if(isFav(a, z)) return `${a} → ${z} já está nas suas rotas.`;
+  favs.unshift({from:a, to:z}); favs = favs.slice(0, 12); saveFavs(); renderFavs();
+  return `${cityOf(a)} → ${cityOf(z)} adicionada.`;
+}
+const goRoute = (a, z) => {
+  $("from").value = a; $("to").value = z; render();
+  $("form").scrollIntoView({behavior:matchMedia("(prefers-reduced-motion: reduce)").matches?"auto":"smooth",block:"start"});
+};
+$("favList").addEventListener("click", e => {
+  const rm = e.target.closest("[data-rm]");
+  if(rm){ favs.splice(+rm.dataset.rm, 1); saveFavs(); renderFavs(); return; }
+  const g = e.target.closest("[data-f]"); if(g){ const r = favs[+g.dataset.f]; goRoute(r.from, r.to); }
+});
+$("favForm").addEventListener("submit", e => {
+  e.preventDefault();
+  const msg = addFav(codeOf($("favFrom").value), codeOf($("favTo").value));
+  $("favMsg").textContent = msg;
+  if(/adicionada/.test(msg)){ $("favFrom").value = ""; $("favTo").value = ""; }
+});
+$("saveFav").onclick = () => {
+  const s = state(); if(!s.from || !s.to) return;
+  if(isFav(s.from, s.to)){ favs = favs.filter(r => !(r.from === s.from && r.to === s.to)); saveFavs(); renderFavs(); }
+  else addFav(s.from, s.to);
+};
 $("tabCash").onclick=()=>{dealTab="cash";renderDeals();};
 $("tabMiles").onclick=()=>{dealTab="miles";renderDeals();};
 // Trecho de compra de uma oferta: data da oferta (milhas, só ida) ou as datas do formulário
@@ -1235,7 +1351,7 @@ addEventListener("resize", () => { clearTimeout(tResize); tResize = setTimeout((
   $("credits").hidden = !ks.length;
   $("creditList").innerHTML = ks.map(k => { const p = PHOTOS[k]; return `<li>${esc(p.n)}: ${esc(p.a)}, ${p.u?`<a href="${esc(p.u)}" target="_blank" rel="noopener">${esc(p.l)}</a>`:esc(p.l)}, via Wikimedia Commons</li>`; }).join("");
 })();
-renderDeals(); render(); calc(); renderTrend();
+renderDeals(); render(); renderFavs(); calc(); renderTrend();
 </script>
 </body>
 </html>
