@@ -67,10 +67,7 @@ header p{margin:8px 0 0;color:var(--muted);max-width:60ch}
 .err{color:var(--warn);font-size:.85rem;padding:0 20px 14px;margin:0}
 
 /* Rotas populares */
-.routes h2,.results h2,.calc h2,.tips h2{font-family:var(--display);font-weight:600;font-size:1.5rem;text-transform:uppercase;letter-spacing:.03em;margin:0 0 10px}
-.chips{display:flex;flex-wrap:wrap;gap:8px}
-.chips button{font-family:var(--mono);font-size:.82rem;padding:6px 10px;border-radius:6px;border:1px solid var(--line);background:var(--paper);color:var(--ink);cursor:pointer}
-.chips button:hover{border-color:var(--accent);color:var(--accent)}
+.results h2,.calc h2,.tips h2{font-family:var(--display);font-weight:600;font-size:1.5rem;text-transform:uppercase;letter-spacing:.03em;margin:0 0 10px}
 .sub{color:var(--muted);font-size:.85rem;margin:-4px 0 12px}
 
 /* Resultados */
@@ -251,7 +248,7 @@ footer{color:var(--muted);font-size:.8rem;max-width:68ch}
   .swap{margin:0;justify-self:end;transform:rotate(90deg)}
   .verdict{grid-template-columns:1fr}
 }
-@media (prefers-reduced-motion:no-preference){a.go,.chips button,.swap{transition:border-color .15s,color .15s}}
+@media (prefers-reduced-motion:no-preference){a.go,.swap{transition:border-color .15s,color .15s}}
 /* Pesquisa dentro do app */
 .live{background:var(--paper);border:1px solid var(--line);border-radius:12px;padding:16px;display:grid;gap:12px;margin-bottom:18px}
 .live .row{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
@@ -349,12 +346,6 @@ footer{color:var(--muted);font-size:.8rem;max-width:68ch}
         <select id="cabin"><option value="economy">Econômica</option><option value="premium">Premium Economy</option><option value="business">Executiva</option><option value="first">Primeira</option></select></div>
     </div>
     <p class="err" id="err" hidden></p>
-  </section>
-
-  <section class="routes">
-    <h2>Rotas populares</h2>
-    <p class="sub">Toque para preencher o trecho.</p>
-    <div class="chips" id="chips"></div>
   </section>
 
   <section class="results" aria-live="polite">
@@ -588,8 +579,6 @@ let dealTab = "cash";
 const todayYMD = (() => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`; })();
 const expired = d => (d.until && d.until < todayYMD) || (d.date && d.date < todayYMD);
 const activeDeals = tab => DEALS[tab].filter(d => !expired(d));
-const POPULAR = [["GRU","LIS"],["GRU","MIA"],["GRU","MCO"],["GIG","EZE"],["GRU","SCL"],["GRU","CDG"],["GRU","MAD"],["GRU","JFK"],
-  ["CGH","SDU"],["GRU","REC"],["GRU","SSA"],["BSB","FOR"],["GRU","MCZ"],["CGH","POA"],["GIG","NAT"],["GRU","FLN"]];
 
 const $ = id => document.getElementById(id);
 const esc = v => String(v==null?"":v).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
@@ -601,7 +590,6 @@ const addDays = (s,n) => { const d=new Date(s+"T12:00"); d.setDate(d.getDate()+n
 const CABIN_PT_KEYS = ["economy","premium","business","first"];
 let oneWay = false;
 
-$("chips").innerHTML = POPULAR.map(([a,b])=>`<button type="button" data-a="${a}" data-b="${b}">${a} → ${b}</button>`).join("");
 
 // datas de exemplo: ida em ~6 semanas, volta 10 dias depois
 const today = new Date(); today.setHours(12);
@@ -877,7 +865,6 @@ setupCombo("from"); setupCombo("to"); setupCombo("exFrom");
 ["dep","ret","pax","cabin"].forEach(id=>$(id).addEventListener("change",()=>{ if($("dep").value&&$("ret").value<$("dep").value&&!oneWay) $("ret").value=addDays($("dep").value,7); render();}));
 $("rt").onclick=()=>{oneWay=false;render();}; $("ow").onclick=()=>{oneWay=true;render();};
 $("swap").onclick=()=>{const a=$("from").value;$("from").value=$("to").value;$("to").value=a;render();};
-$("chips").addEventListener("click",e=>{const b=e.target.closest("button");if(!b)return;$("from").value=b.dataset.a;$("to").value=b.dataset.b;render();});
 ["cPrice","cMiles","cTax","cCost"].forEach(id=>$(id).addEventListener("input",calc));
 const DEALS_AGE = (() => { const n = Math.round((new Date(todayYMD+"T12:00") - new Date("2026-11-01T12:00"))/864e5); return n <= 0 ? "hoje" : n === 1 ? "há 1 dia" : `há ${n} dias`; })();
 const cityOf = c => (AIRPORTS[c] || c).split(" · ")[0];
