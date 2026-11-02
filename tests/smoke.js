@@ -250,7 +250,9 @@ const assert = (c,m) => { console.log((c?'PASS ':'FAIL ')+m); if(!c) process.exi
       return route.fulfill({status:200, headers:H, body:JSON.stringify({months: (q.days==='10' && M[q.to+'10']) || M[q.to] || {}})});
     }
     const P = {GIG:{G3:{price:389,transfers:0}, LA:{price:412.5,transfers:1}, AV:{price:350,transfers:1}}, SSA:{AD:{price:612}}, LIS:{TP:{price:3480}}, REC:{G3:{price:701}}};
-    const airlines = Object.fromEntries(Object.entries(P[q.to]||{}).map(([k,v]) => [k, {departure_at:(q.dep||'')+'T08:00:00-03:00', ...v}]));
+    // Recife: o preço encontrado é de 3 dias depois da data pedida
+    const depAt = q.to === 'REC' && q.dep ? new Date(Date.parse(q.dep+'T12:00:00Z') + 3*864e5).toISOString().slice(0,10) : (q.dep||'');
+    const airlines = Object.fromEntries(Object.entries(P[q.to]||{}).map(([k,v]) => [k, {departure_at:depAt+'T08:00:00-03:00', ...v}]));
     return route.fulfill({status:200, headers:H, body:JSON.stringify({scope: q.to==='REC' ? 'month' : 'date', airlines})});
   });
   const pa = await ctxApi.newPage(); const errsA = []; pa.on('pageerror', e => errsA.push(e.message));
@@ -280,6 +282,11 @@ const assert = (c,m) => { console.log((c?'PASS ':'FAIL ')+m); if(!c) process.exi
   await pa.fill('#to','FOR'); await pa.dispatchEvent('#to','input'); await pa.click('#searchBtn');
   await pa.waitForFunction(() => !document.querySelector('#bestBox .spin') && /preço recente/.test(document.getElementById('bestBox').textContent), null, {timeout:8000}).catch(()=>{});
   assert(/Não há preço recente/.test(await pa.textContent('#bestBox')), 'route without fares explains it');
+  // preço de outro dia: o botão de comprar abre a companhia nesse dia
+  await pa.fill('#to','REC'); await pa.dispatchEvent('#to','input'); await pa.click('#searchBtn');
+  await pa.waitForFunction(() => /R\$/.test(document.getElementById('bestBox').textContent) && !document.querySelector('#bestBox .spin'), null, {timeout:8000}).catch(()=>{});
+  const od = await pa.evaluate(() => ({t: document.getElementById('bestBox').textContent.replace(/\s+/g,' '), href: (document.querySelector('#bestBox a.buy')||{}).href||''}));
+  assert(/Comprar na GOL · ida/.test(od.t) && /voegol/.test(od.href), 'buy button uses the day the fare is for: '+od.t.slice(0,120));
   await pa.fill('#to','GIG'); await pa.dispatchEvent('#to','input');
   // promoções ao vivo (Azul e Melhores Destinos)
   await pa.waitForFunction(() => !document.getElementById('dealsLive').hidden, null, {timeout:8000}).catch(()=>{});

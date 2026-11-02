@@ -945,10 +945,15 @@ function bestBox(s, cs, lp){
     : p.scope === "date" ? "preço para essas datas"
     : p.dep.slice(0,7) !== s.dep.slice(0,7) ? `sem preço recente em ${mo(s.dep)}; o mais próximo é de ${mo(p.dep)}, ida ${fmtBR(p.dep).slice(0,5)}`
     : `melhor preço de ${mo(p.dep)}, ida ${fmtBR(p.dep).slice(0,5)}`;
+  // o preço vale para outro dia: o botão abre a companhia nesse dia (mesma duração da viagem)
+  const otherDay = p.from === "api" && p.dep && p.dep !== s.dep && p.dep >= ymd(today);
+  const al = AIRLINE[code];
+  const nights = s.ret ? Math.round((new Date(s.ret+"T12:00") - new Date(s.dep+"T12:00")) / 864e5) : 0;
+  const buyUrl = otherDay && al && al.url ? al.url({...s, dep:p.dep, ret: s.ret ? addDays(p.dep, nights) : ""}) : top.url;
   box.className = "best-box";
   box.innerHTML = `<div class="lbl">Menor preço encontrado · ${esc(label)}</div>
     <div class="main">${LOGOS[code] ? `<img src="img/logo-${code}.png" alt="">` : ""}<div><div class="pr">${brlExact(p.v)}</div><div class="who" translate="no">${esc(top.name)}</div></div></div>
-    <a class="buy" href="${esc(top.url)}" target="_blank" rel="noopener">${top.buy ? "Comprar na "+esc(top.name) : "Abrir "+esc(top.name)} →</a>
+    <a class="buy" href="${esc(buyUrl)}" target="_blank" rel="noopener">${top.buy ? "Comprar na "+esc(top.name) : "Abrir "+esc(top.name)}${otherDay ? " · ida "+fmtBR(p.dep).slice(0,5) : ""} →</a>
     <div class="meta">${esc(when)}${p.stops != null ? " · "+stopsTxt(p.stops) : ""} · por adulto${lp && lp.at ? " · consultado às "+hhmm(lp.at) : ""}. Outras companhias logo abaixo.</div>`;
 }
 $("searchBtn").onclick = () => {
