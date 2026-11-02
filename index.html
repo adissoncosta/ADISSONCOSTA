@@ -1,7 +1,8 @@
 <!doctype html>
-<html lang="pt-BR">
+<html lang="pt-BR" translate="no">
 <head>
 <meta charset="utf-8">
+<meta name="google" content="notranslate">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>Radar de Passagens</title>
 <meta name="claude:viewport-fit-sides" content="cover">
@@ -785,7 +786,7 @@ const priceLine = c => c.price
   ? `<b class="lp">${brlExact(c.price.v)}</b><span>${c.price.from === "voos" ? "voo mais barato no site" : "menor valor na página do site"}</span>`
   : c.st === "run" ? `<span class="lp wait">Pesquisando preço…</span>`
   : c.st === "no" ? `<span class="lp none">O site não mostrou preço; toque para ver lá</span>` : "";
-const card = c => `<a class="go ${c.buy?"buy":"site"}${c.best?" best":""}" href="${esc(c.url)}" target="_blank" rel="noopener"><div><strong>${esc(c.name)}${c.best?'<span class="tag2">menor preço</span>':""}</strong><span>${esc(c.sub)}</span>${priceLine(c)}</div><span class="arrow">${c.verb||(c.buy?"Comprar":"Abrir")} →</span></a>`;
+const card = c => `<a class="go ${c.buy?"buy":"site"}${c.best?" best":""}" href="${esc(c.url)}" target="_blank" rel="noopener"><div><strong class="notranslate" translate="no">${esc(c.name)}${c.best?'<span class="tag2">menor preço</span>':""}</strong><span>${esc(c.sub)}</span>${priceLine(c)}</div><span class="arrow">${c.verb||(c.buy?"Comprar":"Abrir")} →</span></a>`;
 // Preços lidos nos sites das companhias para a busca atual (ficam salvos por 6 horas neste navegador)
 const LP_KEY = "radar-precos", LP_TTL = 6*3600e3;
 const searchKey = s => [s.from,s.to,s.dep,s.ret,s.pax,s.cabin].join("|");
@@ -928,7 +929,7 @@ function renderDeals(){
     <article class="deal">
       ${photoBlock(z, {orig: multi ? "várias cidades" : cityOf(a), chipR: CABIN_PT[cab], chipL: d.badge, flag: flagFor(z, d)})}
       <div class="body">
-      <div class="who">${whoBadge(codes, who)}<span>${esc(who)}</span><span class="age">${age}</span></div>
+      <div class="who">${whoBadge(codes, who)}<span translate="no">${esc(who)}</span><span class="age">${age}</span></div>
       <h3>${d.title}</h3>
       <div class="price">${d.price}<small>${d.unit==="a partir de"?"a partir de":d.unit}</small></div>
       <ul><li>${d.info[0]}</li>${d.until===todayYMD?`<li style="color:var(--warn);font-weight:600">Último dia da oferta</li>`:""}</ul>
