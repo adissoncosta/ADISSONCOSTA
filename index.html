@@ -1,0 +1,1002 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Radar de Passagens</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@500;600&display=swap">
+<style>
+/* Layout: um cartão de embarque como formulário, seguido de links de busca e calculadora de milheiro */
+:root{
+  --bg:#E9EEF2; --paper:#FFFFFF; --ink:#13263B; --muted:#5A6B7D; --line:#C9D3DC;
+  --accent:#1F5FA8; --accent-ink:#FFFFFF; --sign:#F2B705; --sign-ink:#13263B;
+  --good:#1E7A4C; --warn:#A5610A;
+  --display:"Barlow Condensed","Arial Narrow",system-ui,sans-serif;
+  --body:"IBM Plex Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --mono:"IBM Plex Mono",ui-monospace,Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#0E1823; --paper:#16222F; --ink:#E6EDF3; --muted:#93A4B5; --line:#2A3A4B;
+  --accent:#6AA6E8; --accent-ink:#0E1823; --sign:#F2B705; --sign-ink:#13263B;
+  --good:#5BC28B; --warn:#E3A24A; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0E1823; --paper:#16222F; --ink:#E6EDF3; --muted:#93A4B5; --line:#2A3A4B;
+  --accent:#6AA6E8; --accent-ink:#0E1823; --sign:#F2B705; --sign-ink:#13263B;
+  --good:#5BC28B; --warn:#E3A24A; color-scheme:dark}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--body);font-size:15px;line-height:1.5}
+.wrap{max-width:880px;margin:0 auto;padding-block:28px 56px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));display:grid;gap:28px}
+header h1{font-family:var(--display);font-weight:700;font-size:clamp(2.2rem,7vw,3.4rem);line-height:1;margin:0;letter-spacing:.01em;text-transform:uppercase;text-wrap:balance}
+header p{margin:8px 0 0;color:var(--muted);max-width:60ch}
+.tag{display:inline-block;background:var(--sign);color:var(--sign-ink);font-family:var(--mono);font-size:.72rem;font-weight:600;letter-spacing:.08em;padding:3px 8px;border-radius:3px;margin-bottom:10px}
+
+/* Cartão de embarque */
+.pass{background:var(--paper);border:1px solid var(--line);border-radius:14px;overflow:hidden}
+.pass-top{display:grid;grid-template-columns:1fr auto 1fr;gap:12px;align-items:end;padding:22px 20px 18px}
+.city label,.field label{display:block;font-size:.72rem;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:4px}
+.city input{width:100%;font-family:var(--mono);font-weight:600;font-size:clamp(2rem,9vw,3rem);text-transform:uppercase;border:0;border-bottom:2px solid var(--line);background:transparent;color:var(--ink);padding:0 0 2px;letter-spacing:.04em}
+.city input:focus{outline:none;border-bottom-color:var(--accent)}
+.city .name{font-size:.82rem;color:var(--muted);min-height:1.3em;margin-top:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.city.dest{text-align:right}.city.dest input{text-align:right}
+.swap{width:44px;height:44px;border-radius:50%;border:1px solid var(--line);background:var(--bg);color:var(--ink);cursor:pointer;margin-bottom:28px;display:grid;place-items:center}
+.swap:hover{border-color:var(--accent);color:var(--accent)}
+.swap svg{width:20px;height:20px}
+.perf{height:0;border-top:2px dashed var(--line);margin:0 14px;position:relative}
+.pass-bottom{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:16px;padding:18px 20px 22px}
+.field input,.field select{width:100%;font:inherit;font-family:var(--mono);font-size:.95rem;padding:9px 10px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--ink)}
+.field input:focus,.field select:focus,.calc input:focus{outline:2px solid var(--accent);outline-offset:1px}
+.field input:disabled{opacity:.45}
+.trip{display:flex;gap:6px;padding:0 20px 18px;flex-wrap:wrap}
+.trip button{font:inherit;font-size:.85rem;padding:6px 14px;border-radius:99px;border:1px solid var(--line);background:transparent;color:var(--ink);cursor:pointer}
+.trip button[aria-pressed="true"]{background:var(--ink);color:var(--paper);border-color:var(--ink)}
+.err{color:var(--warn);font-size:.85rem;padding:0 20px 14px;margin:0}
+
+/* Rotas populares */
+.routes h2,.results h2,.calc h2,.tips h2{font-family:var(--display);font-weight:600;font-size:1.5rem;text-transform:uppercase;letter-spacing:.03em;margin:0 0 10px}
+.chips{display:flex;flex-wrap:wrap;gap:8px}
+.chips button{font-family:var(--mono);font-size:.82rem;padding:6px 10px;border-radius:6px;border:1px solid var(--line);background:var(--paper);color:var(--ink);cursor:pointer}
+.chips button:hover{border-color:var(--accent);color:var(--accent)}
+.sub{color:var(--muted);font-size:.85rem;margin:-4px 0 12px}
+
+/* Resultados */
+.summary{font-family:var(--mono);font-size:.85rem;color:var(--muted);margin:-4px 0 14px}
+.group{margin-bottom:18px}
+.group h3{font-size:.75rem;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin:0 0 8px;font-weight:600}
+.list{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:10px}
+a.go{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:14px 16px;background:var(--paper);border:1px solid var(--line);border-radius:10px;color:var(--ink);text-decoration:none;min-width:0}
+a.go:hover,a.go:focus-visible{border-color:var(--accent);outline:none}
+a.go strong{display:block;font-weight:600}
+a.go span{display:block;font-size:.8rem;color:var(--muted)}
+a.go .arrow{font-family:var(--mono);color:var(--accent);font-weight:600;flex:none}
+.cta{display:inline-flex;align-items:center;gap:8px;background:var(--accent);color:var(--accent-ink);font-weight:600;text-decoration:none;padding:12px 18px;border-radius:10px;margin-bottom:16px}
+
+/* Promoções */
+.deals h2{font-family:var(--display);font-weight:600;font-size:1.5rem;text-transform:uppercase;letter-spacing:.03em;margin:0}
+.deals-head{display:flex;justify-content:space-between;align-items:baseline;gap:12px;flex-wrap:wrap;margin-bottom:10px}
+.stamp{margin:0;font-family:var(--mono);font-size:.75rem;color:var(--muted)}
+.tabs{display:flex;gap:6px;margin-bottom:14px}
+.tabs button{font:inherit;font-size:.85rem;padding:6px 14px;border-radius:99px;border:1px solid var(--line);background:transparent;color:var(--ink);cursor:pointer}
+.tabs button[aria-selected="true"]{background:var(--sign);color:var(--sign-ink);border-color:var(--sign);font-weight:600}
+.deal-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,330px),1fr));gap:12px}
+.deal{background:var(--paper);border:1px solid var(--line);border-radius:12px;overflow:hidden;display:grid;grid-template-columns:clamp(88px,30%,124px) minmax(0,1fr);min-width:0}
+.deal .pic{position:relative;min-height:100%;background:#79B4E3}
+.deal .pic svg{position:absolute;inset:0;width:100%;height:100%;display:block}
+.deal .pic .cap{position:absolute;left:0;right:0;bottom:0;padding:18px 7px 7px;font-size:.68rem;font-weight:600;line-height:1.25;color:#fff;background:linear-gradient(transparent,rgba(10,20,35,.78));text-wrap:balance}
+.deal .body{padding:14px 14px 16px;display:grid;gap:8px;align-content:start;min-width:0}
+.deal .route{font-family:var(--mono);font-weight:600;font-size:.82rem;letter-spacing:.04em;color:var(--muted);display:flex;align-items:center;gap:8px}
+.deal .flags{display:inline-flex;align-items:center;gap:4px;flex:none}
+.deal .flag{font-size:1.35rem;line-height:1;font-family:"Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif}
+.deal .flags i{font-style:normal;font-size:.8rem;color:var(--muted)}
+.deal h3{margin:0;font-size:1.05rem;font-weight:600;line-height:1.3}
+.deal .price{font-family:var(--display);font-weight:700;font-size:1.9rem;line-height:1;font-variant-numeric:tabular-nums}
+.deal .price small{font-family:var(--body);font-size:.78rem;font-weight:500;color:var(--muted);margin-left:4px}
+.deal .from{font-size:.72rem;color:var(--muted);text-transform:uppercase;letter-spacing:.08em}
+.deal ul{margin:0;padding:0;list-style:none;font-size:.85rem;color:var(--muted);display:grid;gap:2px}
+.deal .acts{display:flex;gap:8px;flex-wrap:wrap;margin-top:4px}
+.deal .acts button,.deal .acts a{font:inherit;font-size:.82rem;padding:6px 12px;border-radius:8px;border:1px solid var(--line);background:transparent;color:var(--ink);cursor:pointer;text-decoration:none}
+.deal .acts button{background:var(--accent);color:var(--accent-ink);border-color:var(--accent);font-weight:600}
+.badge{justify-self:start;font-size:.7rem;font-weight:600;padding:2px 8px;border-radius:4px;background:var(--bg);color:var(--ink);border:1px solid var(--line)}
+
+/* Variação de preço em 12 meses */
+.trend{background:var(--paper);border:1px solid var(--line);border-radius:14px;padding:20px;display:grid;gap:16px;min-width:0}
+.trend h2{font-family:var(--display);font-weight:600;font-size:1.5rem;text-transform:uppercase;letter-spacing:.03em;margin:0}
+.trend .sub{margin:-8px 0 0}
+.tgrid{display:grid;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);gap:12px;align-items:end}
+.tgrid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px}
+.tswap{width:40px;height:40px;border-radius:50%;border:1px solid var(--line);background:var(--bg);color:var(--ink);cursor:pointer;display:grid;place-items:center}
+.tswap:hover{border-color:var(--accent);color:var(--accent)}
+.tswap svg{width:18px;height:18px}
+.tacts{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.tacts .cta{margin:0}
+.tacts a.sec,.tacts button{font:inherit;font-size:.85rem;padding:10px 14px;border-radius:10px;border:1px solid var(--line);background:transparent;color:var(--ink);text-decoration:none;cursor:pointer}
+.tacts a.sec:hover,.tacts button:hover{border-color:var(--accent);color:var(--accent)}
+.tnote{margin:0;font-size:.88rem;padding:10px 12px;border-radius:8px;background:var(--bg);border:1px solid var(--line)}
+.tnote a{color:var(--accent)}
+.chartwrap{position:relative;min-width:0}
+.chartwrap svg{display:block;width:100%;height:auto;overflow:visible}
+.chartwrap .axis{font-family:var(--mono);font-size:11px;fill:var(--muted)}
+.chartwrap .grid{stroke:var(--line);stroke-width:1}
+.chartwrap .bar{fill:var(--accent)}
+.chartwrap .bar.min{fill:var(--good)}
+.chartwrap .val{font-family:var(--mono);font-size:11px;font-weight:600;fill:var(--ink)}
+.chartwrap .ref{stroke:var(--muted);stroke-width:1.5;stroke-dasharray:5 4}
+.chartwrap .hit{fill:transparent;cursor:default;outline:none}
+.chartwrap .hit:focus-visible{stroke:var(--accent);stroke-width:2}
+.chartwrap .empty{font-size:13px;fill:var(--muted)}
+.ttip{position:absolute;pointer-events:none;background:var(--ink);color:var(--paper);font-size:.8rem;padding:6px 9px;border-radius:6px;white-space:nowrap;transform:translate(-50%,-100%);margin-top:-8px}
+.ttip strong{font-family:var(--mono)}
+.tsum{margin:0;font-size:.9rem}
+.months{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,128px),1fr));gap:8px}
+.mo{border:1px solid var(--line);border-radius:10px;padding:10px;display:grid;gap:6px;background:var(--bg);min-width:0}
+.mo.sel{border-color:var(--accent);box-shadow:inset 0 0 0 1px var(--accent)}
+.mo-h{display:flex;justify-content:space-between;align-items:baseline;gap:2px 6px;flex-wrap:wrap}
+.mo-h strong{font-size:.9rem;text-transform:capitalize}
+.mo-h span{font-family:var(--mono);font-size:.72rem;color:var(--muted)}
+.mo input{width:100%;font-family:var(--mono);font-size:.95rem;padding:7px 8px;border:1px solid var(--line);border-radius:6px;background:var(--paper);color:var(--ink)}
+.mo input:focus{outline:2px solid var(--accent);outline-offset:1px}
+.mo-l{display:flex;flex-wrap:wrap;gap:2px 10px;font-size:.78rem}
+.mo-l a{white-space:nowrap}
+.mo-l a{color:var(--accent);text-decoration:none}
+.mo-l a:hover{text-decoration:underline}
+.mo-s{font-size:.72rem;color:var(--muted);min-height:1em}
+.auto{display:grid;gap:8px;padding:12px;border:1px dashed var(--line);border-radius:10px}
+.auto .row{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.autobtn{font:inherit;font-weight:600;font-size:.9rem;padding:10px 16px;border-radius:10px;border:0;background:var(--sign);color:var(--sign-ink);cursor:pointer}
+.autobtn:disabled{opacity:.55;cursor:progress}
+.auto p{margin:0;font-size:.85rem;color:var(--muted)}
+.auto #tAutoMsg{color:var(--ink)}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+@media (max-width:520px){.tgrid{grid-template-columns:1fr}.tswap{justify-self:end;transform:rotate(90deg)}}
+
+/* Calculadora */
+.calc{background:var(--paper);border:1px solid var(--line);border-radius:14px;padding:20px}
+.calc .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:14px}
+.calc input{width:100%;font-family:var(--mono);font-size:1rem;padding:9px 10px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--ink)}
+.verdict{margin-top:18px;display:grid;grid-template-columns:auto 1fr;gap:16px;align-items:center;border-top:1px solid var(--line);padding-top:16px}
+.verdict .num{font-family:var(--mono);font-weight:600;font-size:1.8rem;font-variant-numeric:tabular-nums;white-space:nowrap}
+.verdict .num small{font-size:.8rem;color:var(--muted);font-weight:500}
+.pill{display:inline-block;font-size:.75rem;font-weight:600;padding:3px 9px;border-radius:99px;border:1px solid currentColor;margin-bottom:4px}
+.pill.good{color:var(--good)}.pill.warn{color:var(--warn)}
+.verdict p{margin:0;font-size:.9rem}
+.tips ul{margin:0;padding-left:18px;display:grid;gap:6px;max-width:68ch}
+footer{color:var(--muted);font-size:.8rem;max-width:68ch}
+@media (max-width:520px){
+  .pass-top{grid-template-columns:1fr;gap:6px}
+  .city.dest,.city.dest input{text-align:left}
+  .swap{margin:0;justify-self:end;transform:rotate(90deg)}
+  .verdict{grid-template-columns:1fr}
+}
+@media (prefers-reduced-motion:no-preference){a.go,.chips button,.swap{transition:border-color .15s,color .15s}}
+/* Pesquisa dentro do app */
+.live{background:var(--paper);border:1px solid var(--line);border-radius:12px;padding:16px;display:grid;gap:12px;margin-bottom:18px}
+.live .row{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.live .lbtn{font:inherit;font-weight:600;font-size:.95rem;padding:11px 18px;border-radius:10px;border:0;background:var(--sign);color:var(--sign-ink);cursor:pointer}
+.live .lbtn:disabled{opacity:.55;cursor:progress}
+.live .lstop{font:inherit;font-size:.85rem;padding:9px 14px;border-radius:10px;border:1px solid var(--line);background:transparent;color:var(--ink);cursor:pointer}
+.live p{margin:0;font-size:.85rem;color:var(--muted)}
+.live #liveMsg{color:var(--ink)}
+.lsrc{display:flex;flex-wrap:wrap;gap:6px}
+.lsrc span{font-family:var(--mono);font-size:.75rem;padding:3px 8px;border-radius:99px;border:1px solid var(--line);color:var(--muted)}
+.lsrc span.ok{border-color:var(--good);color:var(--good)}
+.lsrc span.no{border-color:var(--warn);color:var(--warn)}
+.lsrc span.run{border-color:var(--accent);color:var(--accent)}
+.lres{display:grid;gap:8px}
+.flt{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:4px 14px;align-items:center;padding:12px 14px;border:1px solid var(--line);border-radius:10px;background:var(--bg)}
+.flt.best{border-color:var(--good);box-shadow:inset 0 0 0 1px var(--good)}
+.flt .al{font-weight:600}
+.flt .meta{font-size:.82rem;color:var(--muted)}
+.flt .pr{font-family:var(--display);font-weight:700;font-size:1.6rem;line-height:1;text-align:right;font-variant-numeric:tabular-nums}
+.flt .pr small{display:block;font-family:var(--body);font-size:.7rem;font-weight:500;color:var(--muted);margin-top:3px}
+.flt a{font-size:.8rem;color:var(--accent);text-decoration:none;grid-column:1/-1}
+.flt .tag2{display:inline-block;font-size:.68rem;font-weight:600;padding:1px 6px;border-radius:4px;background:var(--good);color:var(--paper);margin-left:6px;vertical-align:2px}
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <header>
+    <span class="tag">BRASIL ⇄ MUNDO</span>
+    <h1>Radar de Passagens</h1>
+    <p>Preencha o trecho uma vez e abra a mesma busca nos comparadores de preço e nos programas de milhas. Depois, use a calculadora para decidir entre pagar em reais ou em milhas.</p>
+  </header>
+
+  <section class="deals">
+    <div class="deals-head">
+      <h2>Promoções encontradas</h2>
+      <p class="stamp">Pesquisado em 01/11/2026</p>
+    </div>
+    <p class="sub">Ofertas publicadas no fim de outubro de 2026. Os preços mudam rápido e valem para datas específicas, então confira na fonte antes de comprar.</p>
+    <div class="tabs" role="tablist" aria-label="Tipo de oferta">
+      <button type="button" role="tab" id="tabCash" aria-selected="true">Em reais</button>
+      <button type="button" role="tab" id="tabMiles" aria-selected="false">Em milhas</button>
+    </div>
+    <div class="deal-grid" id="deals"></div>
+  </section>
+
+  <section class="pass" id="form" aria-label="Dados da viagem">
+    <div class="pass-top">
+      <div class="city">
+        <label for="from">Origem</label>
+        <input id="from" list="airports" maxlength="3" autocomplete="off" value="GRU">
+        <div class="name" id="fromName"></div>
+      </div>
+      <button class="swap" id="swap" type="button" aria-label="Inverter origem e destino">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 4 3 8l4 4"/><path d="M3 8h14"/><path d="m17 20 4-4-4-4"/><path d="M21 16H7"/></svg>
+      </button>
+      <div class="city dest">
+        <label for="to">Destino</label>
+        <input id="to" list="airports" maxlength="3" autocomplete="off" value="LIS">
+        <div class="name" id="toName"></div>
+      </div>
+    </div>
+    <div class="trip" role="group" aria-label="Tipo de viagem">
+      <button type="button" id="rt" aria-pressed="true">Ida e volta</button>
+      <button type="button" id="ow" aria-pressed="false">Só ida</button>
+    </div>
+    <div class="perf" aria-hidden="true"></div>
+    <div class="pass-bottom">
+      <div class="field"><label for="dep">Ida</label><input type="date" id="dep"></div>
+      <div class="field"><label for="ret">Volta</label><input type="date" id="ret"></div>
+      <div class="field"><label for="pax">Adultos</label>
+        <select id="pax"><option>1</option><option>2</option><option>3</option><option>4</option><option>5</option><option>6</option></select></div>
+      <div class="field"><label for="cabin">Cabine</label>
+        <select id="cabin"><option value="economy">Econômica</option><option value="premium">Premium Economy</option><option value="business">Executiva</option><option value="first">Primeira</option></select></div>
+    </div>
+    <p class="err" id="err" hidden></p>
+  </section>
+
+  <section class="routes">
+    <h2>Rotas populares</h2>
+    <p class="sub">Toque para preencher o trecho.</p>
+    <div class="chips" id="chips"></div>
+  </section>
+
+  <section class="results" aria-live="polite">
+    <h2>Buscar agora</h2>
+    <p class="summary" id="summary"></p>
+    <a class="cta" id="mainCta" target="_blank" rel="noopener">Ver calendário de preços no Google Voos →</a>
+    <div class="live" id="live">
+      <div class="row"><button type="button" class="lbtn" id="liveBtn" hidden>Pesquisar preços aqui</button><button type="button" class="lstop" id="liveStop" hidden>Parar</button></div>
+      <p id="liveDesc" hidden>Pesquisa o trecho acima no Google Voos, no Kayak e no Skyscanner com o navegador do app Claude e lista aqui os voos mais baratos encontrados, do menor para o maior preço. Leva cerca de 30 a 60 segundos.</p>
+      <p id="liveOff" hidden>Para pesquisar aqui dentro, abra esta página no app Claude para computador. Enquanto isso, use os links abaixo.</p>
+      <div class="lsrc" id="liveSrc" hidden></div>
+      <p id="liveMsg" aria-live="polite"></p>
+      <div class="lres" id="liveRes"></div>
+    </div>
+    <div class="group"><h3>Comparadores em reais</h3><div class="list" id="cash"></div></div>
+    <div class="group"><h3>Programas de milhas</h3><div class="list" id="miles"></div></div>
+  </section>
+
+  <section class="trend" id="trend" aria-labelledby="trendTitle">
+    <h2 id="trendTitle">Preço ao longo do ano</h2>
+    <p class="sub">Escolha o trecho e a data da ida. Abaixo aparecem os 12 meses a partir de hoje, cada um com a mesma busca no mesmo dia do mês. Abra o mês, anote o menor preço que aparecer e o gráfico mostra como a passagem varia no ano. As anotações ficam salvas só neste navegador.</p>
+    <div class="tgrid">
+      <div class="field"><label for="tFrom">Origem</label><select id="tFrom"></select></div>
+      <button class="tswap" id="tSwap" type="button" aria-label="Inverter origem e destino"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 4 3 8l4 4"/><path d="M3 8h14"/><path d="m17 20 4-4-4-4"/><path d="M21 16H7"/></svg></button>
+      <div class="field"><label for="tTo">Destino</label><select id="tTo"></select></div>
+    </div>
+    <div class="tgrid2">
+      <div class="field"><label for="tDep">Data da ida</label><input type="date" id="tDep"></div>
+      <div class="field"><label for="tDays">Duração</label>
+        <select id="tDays"><option value="0">Só ida</option><option value="3">3 dias</option><option value="5">5 dias</option><option value="7">7 dias</option><option value="10" selected>10 dias</option><option value="14">14 dias</option><option value="21">21 dias</option><option value="30">30 dias</option></select></div>
+    </div>
+    <p class="err" id="tErr" hidden style="padding:0"></p>
+    <div class="tacts" id="tActs">
+      <a class="cta" id="tGoogle" target="_blank" rel="noopener">Buscar esta data no Google Voos →</a>
+      <a class="sec" id="tSky" target="_blank" rel="noopener">Mês no Skyscanner</a>
+      <a class="sec" id="tKayak" target="_blank" rel="noopener">Kayak</a>
+    </div>
+    <div class="auto" id="tAuto" hidden>
+      <div class="row"><button type="button" class="autobtn" id="tAutoBtn">Preencher automaticamente</button><button type="button" class="tacts-stop" id="tStop" hidden style="font:inherit;font-size:.85rem;padding:9px 14px;border-radius:10px;border:1px solid var(--line);background:transparent;color:var(--ink);cursor:pointer">Parar</button></div>
+      <p id="tAutoDesc">O navegador do app Claude abre a busca de cada mês no Google Voos, que reúne as tarifas das companhias, lê o menor preço e anota no mês. Preenche os meses vazios; se todos já tiverem valor, atualiza todos. Leva cerca de 10 segundos por mês.</p>
+      <p id="tAutoMsg" aria-live="polite"></p>
+    </div>
+    <p class="tnote" id="tAutoOff" hidden>Preenchimento automático: abra esta página no app Claude para computador para que o navegador do Claude busque os preços de cada mês sozinho. Aqui, anote os preços manualmente.</p>
+    <p class="tnote" id="tDeal" hidden></p>
+    <div class="chartwrap" id="tChart"></div>
+    <p class="tsum" id="tSum"></p>
+    <div class="months" id="tMonths"></div>
+    <div class="tacts"><button type="button" id="tClear">Limpar anotações deste trecho</button></div>
+  </section>
+
+  <section class="calc">
+    <h2>Milhas ou dinheiro?</h2>
+    <p class="sub">Exemplo preenchido. Troque pelos valores que você encontrou nas buscas.</p>
+    <div class="grid">
+      <div class="field"><label for="cPrice">Preço pagante (R$)</label><input id="cPrice" type="number" min="0" step="1" value="4800"></div>
+      <div class="field"><label for="cMiles">Milhas exigidas</label><input id="cMiles" type="number" min="0" step="500" value="70000"></div>
+      <div class="field"><label for="cTax">Taxas do resgate (R$)</label><input id="cTax" type="number" min="0" step="1" value="350"></div>
+      <div class="field"><label for="cCost">Seu custo do milheiro (R$)</label><input id="cCost" type="number" min="0" step="0.5" value="17"></div>
+    </div>
+    <div class="verdict">
+      <div class="num" id="cVal">—</div>
+      <div><span class="pill" id="cPill"></span><p id="cText"></p></div>
+    </div>
+  </section>
+
+  <section class="tips">
+    <h2>Dicas para a busca</h2>
+    <ul>
+      <li>No Google Voos, abra o calendário e o gráfico de preços para ver os dias mais baratos do mês.</li>
+      <li>Teste aeroportos vizinhos: GRU, CGH e VCP em São Paulo; GIG e SDU no Rio; LIS e OPO em Portugal.</li>
+      <li>Em programas de milhas, compare o valor do milheiro do resgate com o preço de compra das milhas e com as promoções de transferência bonificada.</li>
+      <li>Busque também só ida em cada sentido. Às vezes duas passagens separadas saem mais baratas que ida e volta.</li>
+    </ul>
+  </section>
+
+  <footer>Os preços aparecem nos sites de cada empresa, que abrem em uma nova aba. Esta página não vende passagens. A última busca e as anotações de preço ficam salvas só neste navegador.</footer>
+</div>
+
+<datalist id="airports"></datalist>
+
+<script>
+const AIRPORTS = {
+  GRU:"São Paulo · Guarulhos",CGH:"São Paulo · Congonhas",VCP:"Campinas · Viracopos",GIG:"Rio de Janeiro · Galeão",SDU:"Rio de Janeiro · Santos Dumont",
+  BSB:"Brasília",CNF:"Belo Horizonte · Confins",SSA:"Salvador",REC:"Recife",FOR:"Fortaleza",NAT:"Natal",MCZ:"Maceió",JPA:"João Pessoa",AJU:"Aracaju",
+  BEL:"Belém",MAO:"Manaus",SLZ:"São Luís",THE:"Teresina",POA:"Porto Alegre",CWB:"Curitiba",FLN:"Florianópolis",NVT:"Navegantes",IGU:"Foz do Iguaçu",
+  GYN:"Goiânia",CGB:"Cuiabá",CGR:"Campo Grande",VIX:"Vitória",PMW:"Palmas",FEN:"Fernando de Noronha",BPS:"Porto Seguro",
+  LIS:"Lisboa",OPO:"Porto",MAD:"Madri",BCN:"Barcelona",CDG:"Paris",FCO:"Roma",MXP:"Milão",LHR:"Londres",FRA:"Frankfurt",AMS:"Amsterdã",ZRH:"Zurique",
+  MIA:"Miami",MCO:"Orlando",FLL:"Fort Lauderdale",JFK:"Nova York · JFK",EWR:"Nova York · Newark",ATL:"Atlanta",IAH:"Houston",DFW:"Dallas",LAX:"Los Angeles",YYZ:"Toronto",
+  EZE:"Buenos Aires · Ezeiza",AEP:"Buenos Aires · Aeroparque",SCL:"Santiago",MVD:"Montevidéu",LIM:"Lima",BOG:"Bogotá",PTY:"Cidade do Panamá",CUN:"Cancún",MEX:"Cidade do México",ASU:"Assunção",
+  DXB:"Dubai",DOH:"Doha",IST:"Istambul",JNB:"Joanesburgo",NRT:"Tóquio · Narita",HND:"Tóquio · Haneda",
+  BRU:"Bruxelas",TPA:"Tampa",CJC:"Calama · Atacama",ICN:"Seul",BKK:"Bangkok",LDB:"Londrina",CPV:"Campina Grande"
+};
+const MD = "https://www.melhoresdestinos.com.br";
+// País de cada aeroporto internacional, para mostrar a bandeira nas promoções
+const COUNTRY = {
+  LIS:"PT",OPO:"PT",MAD:"ES",BCN:"ES",CDG:"FR",FCO:"IT",MXP:"IT",LHR:"GB",FRA:"DE",AMS:"NL",ZRH:"CH",BRU:"BE",
+  MIA:"US",MCO:"US",FLL:"US",JFK:"US",EWR:"US",ATL:"US",IAH:"US",DFW:"US",LAX:"US",TPA:"US",YYZ:"CA",
+  EZE:"AR",AEP:"AR",SCL:"CL",CJC:"CL",MVD:"UY",LIM:"PE",BOG:"CO",PTY:"PA",CUN:"MX",MEX:"MX",ASU:"PY",
+  DXB:"AE",DOH:"QA",IST:"TR",JNB:"ZA",NRT:"JP",HND:"JP",ICN:"KR",BKK:"TH"
+};
+// Aeroportos fora de COUNTRY que estão em AIRPORTS são brasileiros
+const countryOf = code => COUNTRY[code] || (AIRPORTS[code] ? "BR" : "");
+const emoji = cc => String.fromCodePoint(...[...cc].map(c=>127397+c.charCodeAt(0)));
+const flagOf = d => {
+  if(d.badge==="Nacional") return "";
+  const a = countryOf(d.fill[0]);
+  const z = /EUROPA/i.test(d.route) ? "EU" : countryOf(d.fill[1]);
+  if(!a || !z) return "";
+  return `<span class="flags" aria-hidden="true"><span class="flag">${emoji(a)}</span><i>→</i><span class="flag">${emoji(z)}</span></span>`;
+};
+const DEALS = {
+  cash:[
+    {route:"BR → BR",title:"Passagens nacionais com Azul, Gol e Latam",price:"R$ 267",unit:"ida e volta",info:["Taxas incluídas; saídas de mais de 90 cidades","Rotas e datas na tabela da fonte"],badge:"Nacional",fill:["GRU","SSA","economy"],src:MD+"/promocao/passagens-aereas-nacionais-30-10-26"},
+    {route:"CWB → POA",title:"Natal Luz de Gramado: voos para Porto Alegre",price:"R$ 335",unit:"ida e volta",info:["Belo Horizonte por R$ 395; São Paulo por R$ 444","Oferta vai só até segunda-feira, 02/11"],badge:"Nacional",fill:["CWB","POA","economy"],until:"2026-11-02",src:MD+"/promocao/natal-luz-de-gramado-passagens-aereas-31out26"},
+    {route:"CGH → IGU",title:"São Paulo a Foz do Iguaçu",price:"R$ 453",unit:"ida e volta",info:["Datas de nov/26 a mar/27, inclusive férias de janeiro","Curitiba por R$ 528; Campinas por R$ 683"],badge:"Nacional",fill:["CGH","IGU","economy"],src:MD+"/promocao/baixou-voos-sao-paulo-foz-do-iguacu-453"},
+    {route:"BR → MCO/TPA",title:"Orlando ou Tampa, na Flórida",price:"R$ 2.459",unit:"ida e volta",info:["Saídas de várias cidades do Brasil","Datas de nov/26 a out/27; melhores em nov, fev a mai, ago e set"],badge:"Internacional",fill:["GRU","MCO","economy"],src:MD+"/promocao/parques-da-florida-voos-orlando-tampa-2341"},
+    {route:"GIG → NYC",title:"Rio de Janeiro a Nova York",price:"R$ 2.617",unit:"a partir de",info:["Datas inclusive na primavera de 2027","Outras cidades a partir de R$ 3.258"],badge:"Internacional",fill:["GIG","JFK","economy"],src:MD+"/promocao/partiu-big-apple-passagens-aereas-para-nova-york-30out26"},
+    {route:"FOR → LIS",title:"Europa em voo direto LATAM",price:"R$ 3.599",unit:"ida e volta",info:["Brasília a Milão por R$ 3.831; São Paulo a Bruxelas por R$ 3.984","Melhores datas: nov, fev e mar; sem bagagem despachada"],badge:"Internacional",fill:["FOR","LIS","economy"],src:MD+"/promocao/europa-voos-diretos-da-latam-29out26"},
+    {route:"BR → ÁSIA",title:"Japão, Coreia, Tailândia e mais destinos na Ásia",price:"R$ 6.047",unit:"ida e volta",info:["Saídas de várias cidades brasileiras","Também Índia, Taiwan, Hong Kong e Singapura"],badge:"Internacional",fill:["GRU","NRT","economy"],src:MD+"/promocao/selecao-asia-passagens-para-japao-china-coreia-do-sul-tailandia-e-mais-destinos-a-partir-de-r-6-047-ida-e-volta"},
+    {route:"FOR → LIS",title:"Europa em classe executiva",price:"R$ 9.212",unit:"ida e volta",info:["Taxas incluídas","Rio a Barcelona por R$ 9.905; São Paulo a Lisboa por R$ 10.365"],badge:"Executiva",fill:["FOR","LIS","business"],src:MD+"/promocao/passagens-aereas-europa-classe-executiva-30-10-26"}
+  ],
+  miles:[
+    {route:"CPV → REC",title:"Campina Grande a Recife pela Azul",price:"3.250",unit:"pontos Azul + taxas, o trecho",info:["Viagem em 17 de novembro; valor Diamante, demais 5.000","Outras nacionais: CGH → LDB por 4.892 LATAM Pass; CGH → FLN por 6.500 Smiles"],badge:"Nacional",fill:["CPV","REC","economy"],date:"2026-11-17",src:"https://pontospravoar.com/alerta-ppv-passagens-nacionais-3250-pontos-taxas/"},
+    {route:"FLN → AEP",title:"Florianópolis a Buenos Aires pela GOL",price:"28.500",unit:"milhas Smiles + taxas, o trecho",info:["Viagem em 15 de dezembro","Clube e Diamante; demais clientes 30.000"],badge:"América do Sul",fill:["FLN","AEP","economy"],date:"2026-12-15",src:"https://pontospravoar.com/alerta-ppv-smiles-oferece-voos-internacionais-a-partir-de-28-500-milhas-taxas/"},
+    {route:"VCP → LIM",title:"Campinas a Lima pela LATAM",price:"30.791",unit:"milhas LATAM Pass + taxas, o trecho",info:["Viagem em 5 de novembro","São Paulo a Cusco a partir de 34.898 (abril de 2027)"],badge:"América do Sul",fill:["VCP","LIM","economy"],date:"2026-11-05",src:"https://pontospravoar.com/alerta-ppv-confira-passagens-para-o-peru-latam-pass-30-mil-milhas/"},
+    {route:"GRU → EZE",title:"São Paulo a Buenos Aires pela Turkish",price:"41.500",unit:"pontos Azul + taxas, o trecho",info:["Viagem em 17 de novembro","Azul pelo Mundo; Rio a Santiago pela SKY por 51.500"],badge:"América do Sul",fill:["GRU","EZE","economy"],date:"2026-11-17",src:"https://pontospravoar.com/alerta-ppv-confira-destinos-internacionais-a-partir-de-41-500-pontos-no-azul-pelo-mundo/"},
+    {route:"MAO → JFK",title:"Manaus a Nova York pela Avianca",price:"54.400",unit:"milhas Smiles + taxas, o trecho",info:["Viagem em 2 de setembro","Clube e Diamante; demais clientes 58.000"],badge:"Internacional",fill:["MAO","JFK","economy"],date:"2027-09-02",src:"https://pontospravoar.com/alerta-ppv-smiles-oferece-voos-internacionais-a-partir-de-28-500-milhas-taxas/"},
+    {route:"GRU → MCO",title:"São Paulo a Orlando pela Avianca",price:"66.500",unit:"milhas Smiles + taxas, o trecho",info:["Viagem em 17 de fevereiro","Clube e Diamante; demais clientes 70.000"],badge:"Internacional",fill:["GRU","MCO","economy"],date:"2027-02-17",src:"https://pontospravoar.com/alerta-ppv-smiles-oferece-voos-internacionais-a-partir-de-28-500-milhas-taxas/"}
+  ]
+};
+// ---- Ilustrações dos destinos (desenhos próprios, sem fotos) ----
+const INK = "#13263B", INK2 = "#2C4A6E", INK3 = "#55779C", SNOW = "#F4F7FA", GOLD = "#F2B705";
+const SKY = {
+  dia:["#79B4E3","#DCEFFB","#FFF6C9",28,42,10], tarde:["#EE9356","#FBDCA4","#FFE8A8",70,64,12],
+  crepusculo:["#2F3D78","#EC9470","#FFD27A",26,74,9], tropical:["#36A3DD","#C8EEF9","#FFF3B0",74,34,10],
+  deserto:["#E2894E","#F9E0B4","#FFF2C8",72,50,12], noite:["#16234A","#56689F","#F4F1DE",74,32,6]
+};
+const R = (x,y,w,h,c=INK) => `<rect x="${x}" y="${y}" width="${w}" height="${h}" fill="${c}"/>`;
+const P = (d,c=INK) => `<path d="${d}" fill="${c}"/>`;
+const PL = (pts,c=INK) => `<polygon points="${pts.map(p=>p.join(",")).join(" ")}" fill="${c}"/>`;
+const C = (x,y,r,c=INK) => `<circle cx="${x}" cy="${y}" r="${r}" fill="${c}"/>`;
+const L = (x1,y1,x2,y2,c=INK,w=1) => `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="${c}" stroke-width="${w}" stroke-linecap="round"/>`;
+const ground = (c=INK) => R(0,180,100,20,c);
+const sea = (y,c="#2E7DB5") => R(0,y,100,200-y,c) + L(8,y+6,22,y+6,"#FFFFFF55",1.2) + L(60,y+10,78,y+10,"#FFFFFF55",1.2);
+const sand = (y,c="#E7C38E") => P(`M0 ${y} Q50 ${y-6} 100 ${y} V200 H0Z`,c);
+const palm = (x,b,h,c=INK) => {
+  const tx = x+3, ty = b-h; let s = `<path d="M${x} ${b} Q${x-4} ${b-h/2} ${tx} ${ty}" stroke="${c}" stroke-width="2.6" fill="none" stroke-linecap="round"/>`;
+  [[-14,4],[-11,-6],[0,-9],[11,-6],[14,5],[6,10],[-7,10]].forEach(([dx,dy]) => s += `<path d="M${tx} ${ty} q${dx/2} ${dy-6} ${dx} ${dy}" stroke="${c}" stroke-width="2.2" fill="none" stroke-linecap="round"/>`);
+  return s;
+};
+const skyline = (x0,x1,base,seed,c=INK2,maxH=50) => {
+  let s = "", x = x0, k = seed;
+  while(x < x1){ k = (k*9301+49297)%233280; const w = 6+(k%7), h = 14+(k%maxH); s += R(x,base-h,w,h,c); x += w+1; }
+  return s;
+};
+const mountains = (c=INK3,snow=true) => P("M0 150 L22 104 L36 122 L56 84 L76 118 L88 102 L100 116 V180 H0Z",c)
+  + (snow ? PL([[56,84],[50,96],[54,94],[58,98],[62,94]],SNOW)+PL([[22,104],[18,112],[22,110],[26,112]],SNOW)+PL([[88,102],[85,108],[89,107],[92,108]],SNOW) : "");
+const house = (x,w,h,c,base=176) => {
+  const t = base-h; let s = R(x,t,w,h,c) + PL([[x,t],[x+w*.25,t-5],[x+w*.25,t-9],[x+w*.5,t-13],[x+w*.75,t-9],[x+w*.75,t-5],[x+w,t]],c);
+  for(let yy=t+5; yy<base-8; yy+=10) s += R(x+w*.2,yy,w*.22,5,"#FFFFFFAA")+R(x+w*.58,yy,w*.22,5,"#FFFFFFAA");
+  return s;
+};
+const archRow = (x0,x1,y,h,w,c) => { let s=""; for(let x=x0;x<=x1;x+=w*1.6) s += P(`M${x} ${y+h} V${y+w/2} a${w/2} ${w/2} 0 0 1 ${w} 0 V${y+h}Z`,c); return s; };
+
+const SCENES = {
+  LIS:{n:"Torre de Belém",sky:"dia",d:()=>sea(172)+R(22,138,56,38)+[0,1,2,3,4,5,6].map(i=>R(22+i*8.4,132,5,6)).join("")+R(35,66,30,72)+[0,1,2,3].map(i=>R(35+i*8.2,59,5,7)).join("")+R(31,90,5,12)+R(64,90,5,12)+C(33.5,89,2.6)+C(66.5,89,2.6)+P("M45 112 V102 a5 5 0 0 1 10 0 V112Z",INK3)+P("M46 84 V78 a4 4 0 0 1 8 0 V84Z",INK3)},
+  OPO:{n:"Ponte Luís I",sky:"tarde",d:()=>R(0,120,30,52,INK3)+PL([[0,120],[8,112],[16,120]],INK3)+R(74,130,26,42,INK3)+sea(172,"#3A6E99")+`<path d="M8 172 Q50 70 92 172" stroke="${INK}" stroke-width="5" fill="none"/>`+R(0,116,100,4)+R(10,116,4,56)+R(86,116,4,56)+R(0,158,100,3)+[24,32,40,60,68,76].map(x=>L(x,120,x,x<50?172-(x-8)*1.6:172-(92-x)*1.6,INK,1)).join("")},
+  MAD:{n:"Puerta de Alcalá",sky:"dia",d:()=>ground(INK2)+R(14,122,72,58)+R(10,117,80,5)+PL([[34,117],[50,100],[66,117]])+R(48,92,4,9)+R(20,111,4,6)+R(76,111,4,6)+[26,44,62].map(x=>P(`M${x} 180 V150 a6 6 0 0 1 12 0 V180Z`,"#BFD9EE")).join("")+R(16,158,6,22,"#BFD9EE")+R(78,158,6,22,"#BFD9EE")},
+  BCN:{n:"Sagrada Família",sky:"tarde",d:()=>{const sp=(x,t,w,c=INK)=>PL([[x-w/2,180],[x-w*.32,t+10],[x,t],[x+w*.32,t+10],[x+w/2,180]],c)+C(x,t-1.5,1.8,c);return sp(50,24,9,INK2)+sp(38,46,9,INK2)+sp(62,46,9,INK2)+R(16,128,68,52)+sp(26,62,9)+sp(40,52,10)+sp(60,52,10)+sp(74,62,9)+P("M42 180 V160 a8 8 0 0 1 16 0 V180Z",INK3)}},
+  CDG:{n:"Torre Eiffel",sky:"crepusculo",d:()=>ground()+P("M20 180 Q38 140 45 98 L48 42 L50 24 L52 42 L55 98 Q62 140 80 180 L68 180 Q58 152 50 150 Q42 152 32 180Z")+R(32,136,36,4)+R(41,96,18,3)+R(46,62,8,2)+L(50,24,50,12,INK,1)},
+  FCO:{n:"Coliseu",sky:"tarde",d:()=>{const top=x=>{const t=(x-8)/84;return (1-t)**2*112+2*(1-t)*t*100+t*t*134};let s=ground(INK2)+P("M8 180 V112 Q50 100 92 134 V180Z");[128,148,166].forEach(y=>{for(let x=12;x<88;x+=8.5) if(y>top(x+3)+5) s+=P(`M${x} ${y+10} V${y+3} a3 3 0 0 1 6 0 V${y+10}Z`,"#F5C08A")});return s}},
+  MXP:{n:"Duomo de Milão",sky:"dia",d:()=>{const f=x=>x<50?120-(x-18)*0.875:92+(x-50)*0.875;let s=ground(INK2);for(let x=20;x<=80;x+=7.5){const b=f(x);s+=PL([[x-1.7,b+2],[x,b-16-(Math.abs(x-50)<8?6:0)],[x+1.7,b+2]])}s+=PL([[18,180],[18,120],[50,92],[82,120],[82,180]])+PL([[49,92],[50,46],[51,92]])+C(50,45,2.2,GOLD)+[26,44,62].map(x=>P(`M${x} 180 V160 a6 6 0 0 1 12 0 V180Z`,INK3)).join("");return s}},
+  LHR:{n:"Big Ben",sky:"noite",d:()=>R(56,128,44,52,INK2)+[60,72,84,96].map(x=>PL([[x-2,128],[x,118],[x+2,128]],INK2)).join("")+ground()+R(42,62,16,118)+R(40,54,20,8)+PL([[40,54],[50,24],[60,54]])+L(50,24,50,14,INK,1)+C(50,78,6,"#F4F1DE")+L(50,78,50,74,INK,1)+L(50,78,53,79,INK,1)+[96,110,124,138,152].map(y=>R(46,y,3,7,INK3)+R(51,y,3,7,INK3)).join("")},
+  FRA:{n:"Frankfurt",sky:"crepusculo",d:()=>skyline(0,100,180,7,INK2,40)+R(30,56,15,124)+L(37.5,56,37.5,40,INK,1)+R(58,66,13,114)+PL([[58,66],[64.5,52],[71,66]])+R(76,100,12,80)+ground()},
+  AMS:{n:"Canais de Amsterdã",sky:"dia",d:()=>house(2,18,52,"#7A4E2D")+house(21,15,62,INK2)+house(37,18,48,"#5B3A29")+house(56,16,58,INK)+house(73,18,46,"#8A5A33")+house(92,14,54,INK2)+sea(176,"#2E6E99")},
+  ZRH:{n:"Alpes suíços",sky:"dia",d:()=>mountains()+sea(170,"#4A8DBE")+R(30,140,40,30)+R(36,108,10,62)+R(54,108,10,62)+P("M36 108 a5 7 0 0 1 10 0Z")+P("M54 108 a5 7 0 0 1 10 0Z")+L(41,101,41,96)+L(59,101,59,96)},
+  BRU:{n:"Grand-Place",sky:"crepusculo",d:()=>ground()+R(12,130,76,50)+[16,26,36,58,68,78].map(x=>PL([[x-1.5,130],[x,122],[x+1.5,130]])).join("")+R(43,72,14,58)+PL([[43,72],[46,62],[54,62],[57,72]])+PL([[45,62],[50,26],[55,62]])+archRow(16,82,160,20,6,INK3)},
+  MIA:{n:"Miami Beach",sky:"tropical",d:()=>R(54,104,32,66,INK2)+R(58,96,24,8,INK2)+R(64,88,12,8,INK2)+sea(166,"#2C9AD0")+sand(178)+palm(20,182,58)+palm(36,184,44)},
+  MCO:{n:"Parques da Flórida",sky:"tropical",d:()=>ground("#2E5C46")+`<circle cx="52" cy="122" r="22" stroke="${INK}" stroke-width="3" fill="none"/><path d="M0 170 Q20 170 30 140 Q36 120 52 100 M74 122 Q84 150 100 120" stroke="${INK}" stroke-width="3" fill="none"/>`+[34,44,60,70,80,90].map(x=>L(x,180,x,x<52?150-(x-34):145,INK2,1.2)).join("")+palm(12,182,40)+palm(90,184,34)},
+  NYC:{n:"Nova York",sky:"crepusculo",d:()=>skyline(0,100,180,3,INK2,58)+R(42,92,16,88)+R(44.5,80,11,12)+R(46.5,70,7,10)+R(48.5,60,3,10)+PL([[49.3,60],[50,30],[50.7,60]])+skyline(0,40,180,11,INK,26)+skyline(62,100,180,5,INK,22)},
+  LAX:{n:"Los Angeles",sky:"tarde",d:()=>P("M0 150 Q24 126 46 140 Q70 118 100 136 V180 H0Z",INK3)+skyline(20,80,180,4,INK2,24)+ground()+palm(14,182,70)+palm(30,182,62)+palm(84,182,66)},
+  SKY:{n:"",sky:"crepusculo",d:()=>skyline(0,100,180,9,INK2,52)+skyline(4,96,180,13,INK,30)},
+  YYZ:{n:"CN Tower",sky:"dia",d:()=>sea(176,"#4A8DBE")+skyline(0,38,176,2,INK2,30)+skyline(62,100,176,6,INK2,34)+PL([[46.5,176],[48.6,64],[51.4,64],[53.5,176]])+R(42,82,16,7)+P("M42 82 Q50 74 58 82Z")+R(46,64,8,4)+PL([[49.5,64],[50,22],[50.5,64]])},
+  BUE:{n:"Obelisco",sky:"dia",d:()=>ground(INK2)+[8,20,80,92].map(x=>C(x,166,8,"#2E5C46")+R(x-1,170,2,10,INK)).join("")+PL([[44,180],[46.6,58],[50,50],[53.4,58],[56,180]])+R(49,62,2,3,INK3)},
+  SCL:{n:"Santiago e os Andes",sky:"tarde",d:()=>mountains("#7C8FB0")+skyline(0,100,180,8,INK2,26)+R(62,72,10,108)+PL([[62,72],[67,60],[72,72]])+ground()},
+  CJC:{n:"Deserto do Atacama",sky:"deserto",d:()=>PL([[4,180],[44,96],[56,96],[96,180]],"#8C5A44")+PL([[44,96],[47,104],[50,100],[53,104],[56,96]],SNOW)+P("M0 168 Q30 150 60 166 Q80 156 100 164 V200 H0Z","#C98A4B")+P("M0 182 Q40 170 100 184 V200 H0Z","#B27238")+R(18,150,3,20,"#3F5A35")+R(14,156,3,8,"#3F5A35")+R(21,152,3,7,"#3F5A35")},
+  MVD:{n:"Palacio Salvo",sky:"tarde",d:()=>ground()+R(28,112,44,68)+R(36,86,28,26)+R(42,68,16,18)+P("M42 68 Q50 52 58 68Z")+L(50,56,50,44)+C(30,110,3)+C(70,110,3)+[34,44,54,64].map(x=>[120,134,148,162].map(y=>R(x,y,3,6,INK3)).join("")).join("")},
+  LIM:{n:"Machu Picchu",sky:"dia",d:()=>P("M0 180 V150 Q20 140 34 146 Q48 70 62 64 Q72 70 74 100 Q84 128 100 132 V180Z","#2E4D3A")+P("M0 180 V160 Q50 150 100 158 V180Z","#3E6B4C")+[10,18,26,74,82].map(x=>R(x,152,6,5,INK2)).join("")},
+  BOG:{n:"Monserrate",sky:"tarde",d:()=>P("M0 180 V130 Q30 70 52 66 Q74 72 100 120 V180Z","#3E5E4C")+R(48,52,8,14)+PL([[48,52],[52,44],[56,52]])+R(45,60,14,6)+skyline(0,100,180,12,INK,18)},
+  PTY:{n:"Cidade do Panamá",sky:"tropical",d:()=>skyline(0,100,166,21,INK2,56)+P("M60 166 L60 74 Q66 70 70 74 L70 166Z")+sea(166,"#2C8FC4")+P("M14 176 h28 l-4 6 h-20Z")+R(26,168,8,8)},
+  CUN:{n:"Chichén Itzá",sky:"tropical",d:()=>ground("#2E5C46")+[0,1,2,3,4,5].map(i=>R(14+i*5,176-i*10,72-i*10,10)).join("")+R(42,106,16,10)+R(46,110,8,6,INK3)+PL([[46,176],[48,116],[52,116],[54,176]],INK2)+C(6,170,9,"#2E5C46")+C(94,168,10,"#2E5C46")},
+  MEX:{n:"Anjo da Independência",sky:"dia",d:()=>ground(INK2)+R(38,164,24,16)+R(42,152,16,12)+R(48,70,4,82)+R(46,68,8,4)+P("M50 50 l-7 10 l7 -4 l7 4Z",GOLD)+C(50,52,2,GOLD)+C(10,168,9,"#2E5C46")+C(90,168,9,"#2E5C46")},
+  ASU:{n:"Palacio de los López",sky:"tarde",d:()=>ground()+R(14,140,72,40)+R(42,104,16,36)+R(45,94,10,10)+P("M45 94 Q50 86 55 94Z")+archRow(18,82,152,28,6,INK3)},
+  DXB:{n:"Burj Khalifa",sky:"deserto",d:()=>skyline(0,100,180,17,INK2,30)+PL([[41,180],[43,122],[45.5,122],[46,84],[47.8,84],[48.6,52],[50,18],[51.4,52],[52.2,84],[54,84],[54.5,122],[57,122],[59,180]])+P("M0 182 Q50 174 100 182 V200 H0Z","#C98A4B")},
+  DOH:{n:"Doha",sky:"crepusculo",d:()=>skyline(0,100,164,19,INK2,40)+P("M70 164 L70 70 Q74 60 78 70 L78 164Z",INK2)+sea(164,"#2A5C8C")+P("M22 176 h40 l-6 7 h-28Z")+PL([[40,176],[40,126],[62,174]])+L(40,176,40,124)},
+  IST:{n:"Mesquita Azul",sky:"crepusculo",d:()=>ground()+R(20,150,60,30)+P("M32 150 A18 18 0 0 1 68 150Z")+P("M22 154 A8 8 0 0 1 38 154Z")+P("M62 154 A8 8 0 0 1 78 154Z")+L(50,132,50,124)+[12,88].map(x=>R(x-1.5,96,3,84)+PL([[x-1.5,96],[x,82],[x+1.5,96]])+R(x-2.5,120,5,2)).join("")},
+  JNB:{n:"Savana sul-africana",sky:"tarde",d:()=>P("M58 180 L60 76 L62 180Z",INK2)+R(55,82,10,8,INK2)+P("M0 172 Q50 164 100 170 V200 H0Z","#8C6A3C")+R(26,132,3,44)+L(27,140,18,128,INK,2)+L(28,138,38,126,INK,2)+P("M4 128 Q28 112 52 126 Q28 132 4 128Z")},
+  TYO:{n:"Monte Fuji",sky:"dia",d:()=>PL([[0,180],[42,92],[58,92],[100,180]],INK3)+PL([[42,92],[38,100],[44,104],[50,98],[56,104],[62,100],[58,92]],SNOW)+[0,1,2,3,4].map(i=>PL([[66-12+i*2,170-i*14],[78,164-i*14-3],[90+12-i*2,170-i*14]])+R(72+i*.8,170-i*14,12-i*1.6,6)).join("")+L(78,100,78,88)+ground()},
+  ICN:{n:"N Seoul Tower",sky:"crepusculo",d:()=>P("M0 180 V150 Q50 104 100 146 V180Z","#2E4D3A")+R(48.5,70,3,44)+R(43,84,14,8)+P("M43 84 Q50 78 57 84Z")+PL([[49.4,70],[50,40],[50.6,70]])+skyline(0,100,180,23,INK,16)},
+  BKK:{n:"Wat Arun",sky:"tarde",d:()=>{const pr=(x,b,h,w,c=INK)=>PL([[x-w/2,b],[x-w*.42,b-h*.35],[x-w*.3,b-h*.4],[x-w*.28,b-h*.62],[x-w*.16,b-h*.66],[x-w*.08,b-h*.88],[x,b-h],[x+w*.08,b-h*.88],[x+w*.16,b-h*.66],[x+w*.28,b-h*.62],[x+w*.3,b-h*.4],[x+w*.42,b-h*.35],[x+w/2,b]],c);return pr(18,170,50,16,INK2)+pr(82,170,50,16,INK2)+pr(50,170,128,30)+sea(170,"#3A6E99")}},
+  RIO:{n:"Pão de Açúcar",sky:"tarde",d:()=>P("M42 168 Q48 96 68 88 Q86 86 92 122 Q96 150 100 168Z","#2E4D3A")+P("M4 168 Q12 132 28 130 Q40 132 46 168Z","#3E6B4C")+L(28,131,68,89,INK,.8)+R(46,108,4,3)+sea(168,"#2A86BF")},
+  SAO:{n:"Ponte Estaiada",sky:"noite",d:()=>skyline(0,100,170,27,INK2,50)+[30,36,42,58,64,70].map(x=>L(50,74,x,162,"#C9D6E6",.6)).join("")+L(40,182,60,62,INK,3.4)+L(60,182,40,62,INK,3.4)+P("M0 164 Q50 156 100 166 V170 Q50 160 0 168Z")+sea(176,"#24406A")},
+  BSB:{n:"Congresso Nacional",sky:"dia",d:()=>ground(INK2)+R(8,150,84,8)+R(45.5,84,3.6,66)+R(50.9,84,3.6,66)+R(45.5,104,9,3)+P("M14 136 Q25 158 36 136Z")+P("M64 150 A10 10 0 0 1 84 150Z")+R(24,146,2,4)+R(73,146,2,4)},
+  SSA:{n:"Elevador Lacerda",sky:"tarde",d:()=>P("M0 120 H60 V180 H0Z","#5A7A4E")+skyline(0,58,120,31,INK2,24)+R(44,98,16,82)+R(42,92,20,8)+R(60,124,10,4)+sea(176,"#2E7DB5")},
+  REC:{n:"Recife Antigo",sky:"tropical",d:()=>house(2,18,48,"#C2564A")+house(21,16,56,"#2E7D9E")+house(38,18,44,"#D19A2A")+house(57,16,52,"#3E8E5C")+house(74,18,46,"#B04A7A")+house(93,12,50,INK2)+sea(176,"#2C8FC4")},
+  FOR:{n:"Praias de Fortaleza",sky:"tropical",d:()=>sea(150,"#2EA3C9")+P("M30 170 h30 l-5 5 h-20Z")+PL([[44,170],[44,116],[66,166]],SNOW)+L(44,170,44,112)+sand(182)+palm(86,190,56)},
+  NAT:{n:"Dunas de Natal",sky:"tarde",d:()=>sea(160,"#2E8FC0")+P("M0 172 Q20 132 50 150 Q74 126 100 150 V200 H0Z","#E3B47C")+P("M0 186 Q50 166 100 184 V200 H0Z","#D29A5C")+palm(14,176,30)},
+  MCZ:{n:"Praias de Maceió",sky:"tropical",d:()=>sea(146,"#33C1C9")+R(0,160,100,6,"#2EA3B9")+P("M50 160 h22 l-4 5 h-14Z")+PL([[61,160],[61,128],[76,158]],SNOW)+sand(180)+palm(18,186,62)+palm(32,188,46)},
+  JPA:{n:"Farol do Cabo Branco",sky:"tropical",d:()=>sea(150,"#2C9AD0")+P("M0 200 V140 Q30 132 64 142 V200Z","#5A7A4E")+PL([[30,138],[36,86],[44,86],[50,138]])+R(34,80,12,6)+R(37,74,6,6,GOLD)},
+  FEN:{n:"Morro Dois Irmãos",sky:"tropical",d:()=>P("M20 164 Q28 102 40 104 Q50 110 54 164Z","#2E5C46")+P("M48 164 Q58 96 70 98 Q82 106 84 164Z","#3E6B4C")+sea(162,"#2BB0C8")},
+  IGU:{n:"Cataratas do Iguaçu",sky:"dia",d:()=>P("M0 100 H100 V180 H0Z","#2E4D3A")+P("M0 100 Q50 92 100 100 V108 H0Z","#3E6B4C")+[8,22,34,52,66,84].map((x,i)=>R(x,104,6+i%2*4,64,"#EAF4FB")).join("")+P("M0 166 Q50 158 100 168 V200 H0Z","#DDEBF4")},
+  BPS:{n:"Praias da Bahia",sky:"tropical",d:()=>sea(150,"#2EA3C9")+sand(176)+palm(30,184,64)+palm(48,186,50)+palm(80,186,58)},
+  MAO:{n:"Teatro Amazonas",sky:"tarde",d:()=>ground()+R(16,132,68,48)+R(12,128,76,5)+archRow(20,80,150,30,6,INK3)+P("M36 128 Q36 100 50 98 Q64 100 64 128Z","#2E7D5B")+L(42,126,46,102,GOLD,1.2)+L(58,126,54,102,GOLD,1.2)+L(50,98,50,88)},
+  FLN:{n:"Ponte Hercílio Luz",sky:"crepusculo",d:()=>sea(166,"#284E80")+R(26,90,5,76)+R(69,90,5,76)+`<path d="M0 150 Q14 140 28.5 90 Q50 152 71.5 90 Q86 140 100 150" stroke="${INK}" stroke-width="2" fill="none"/>`+R(0,150,100,4)+[36,42,58,64].map(x=>L(x,150,x,x<50?110+(x-28)*2.6:110+(72-x)*2.6,INK,.8)).join("")},
+  CWB:{n:"Jardim Botânico",sky:"dia",d:()=>ground("#2E5C46")+P("M30 160 V120 Q50 76 70 120 V160Z")+R(26,156,48,6)+[38,50,62].map(x=>L(x,158,x,x===50?98:114,"#BFD9EE",.8)).join("")+L(30,136,70,136,"#BFD9EE",.8)+L(50,98,50,86)+R(4,170,18,6,"#3E6B4C")+R(78,170,18,6,"#3E6B4C")},
+  POA:{n:"Usina do Gasômetro",sky:"crepusculo",d:()=>R(26,130,46,44)+PL([[60,130],[61,60],[66,60],[67,130]])+archRow(30,66,146,28,6,INK3)+sea(174,"#3B4D86")},
+  CNF:{n:"Igreja da Pampulha",sky:"dia",d:()=>P("M10 166 Q18 120 28 166 Q36 130 46 166 Q54 130 62 166 Q70 108 86 166Z")+R(88,120,4,46)+R(84,118,12,4)+sea(166,"#4A8DBE")},
+  BEL:{n:"Ver-o-Peso",sky:"tarde",d:()=>R(16,132,68,36)+[16,84].map(x=>R(x-4,114,8,22)+PL([[x-4,114],[x,104],[x+4,114]])).join("")+[36,64].map(x=>R(x-3,120,6,12)+PL([[x-3,120],[x,112],[x+3,120]])).join("")+sea(168,"#4A6E8C")+P("M58 176 h24 l-4 5 h-16Z")+R(68,168,8,8)},
+  GEN:{n:"",sky:"dia",d:()=>C(28,70,9,"#FFFFFF")+C(38,66,12,"#FFFFFF")+C(48,72,8,"#FFFFFF")+C(70,110,7,"#FFFFFFCC")+C(80,108,9,"#FFFFFFCC")+P("M30 132 l40 -12 l4 2 l-14 8 l10 8 l-3 1 l-12 -5 l-12 6 l-3 -1 l6 -6 l-15 3Z")+ground(INK2)}
+};
+const SCENE_ALIAS = {JFK:"NYC",EWR:"NYC",GIG:"RIO",SDU:"RIO",GRU:"SAO",CGH:"SAO",VCP:"SAO",NRT:"TYO",HND:"TYO",EZE:"BUE",AEP:"BUE",TPA:"MCO",FLL:"MIA",ATL:"SKY",IAH:"SKY",DFW:"SKY"};
+const SCENE_NAME = {SKY:c=>AIRPORTS[c]||c, GEN:c=>AIRPORTS[c] ? AIRPORTS[c].split(" · ")[0] : c};
+function sceneSVG(code){
+  const key = SCENE_ALIAS[code] || (SCENES[code] ? code : "GEN"), sc = SCENES[key];
+  const sk = SKY[sc.sky], id = "sky-"+key;
+  const name = sc.n || (SCENE_NAME[key] ? SCENE_NAME[key](code) : code);
+  const svg = `<svg viewBox="0 0 100 200" preserveAspectRatio="xMidYMax slice" role="img" aria-label="Ilustração: ${name}"><defs><linearGradient id="${id}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${sk[0]}"/><stop offset="1" stop-color="${sk[1]}"/></linearGradient></defs><rect width="100" height="200" fill="url(#${id})"/>${C(sk[3],sk[4],sk[5],sk[2])}${sc.d()}</svg>`;
+  return {svg, name};
+}
+let dealTab = "cash";
+// Uma oferta vence no fim do dia em "until" ou no dia da viagem em "date"
+const todayYMD = (() => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`; })();
+const expired = d => (d.until && d.until < todayYMD) || (d.date && d.date < todayYMD);
+const activeDeals = tab => DEALS[tab].filter(d => !expired(d));
+const POPULAR = [["GRU","LIS"],["GRU","MIA"],["GRU","MCO"],["GIG","EZE"],["GRU","SCL"],["GRU","CDG"],["GRU","MAD"],["GRU","JFK"],
+  ["CGH","SDU"],["GRU","REC"],["GRU","SSA"],["BSB","FOR"],["GRU","MCZ"],["CGH","POA"],["GIG","NAT"],["GRU","FLN"]];
+
+const $ = id => document.getElementById(id);
+const fmtBR = d => d ? d.split("-").reverse().join("/") : "";
+const pad2 = n => String(n).padStart(2,"0");
+const ymd = dt => `${dt.getFullYear()}-${pad2(dt.getMonth()+1)}-${pad2(dt.getDate())}`;
+const iso = ymd;
+const addDays = (s,n) => { const d=new Date(s+"T12:00"); d.setDate(d.getDate()+n); return ymd(d); };
+const CABIN_PT_KEYS = ["economy","premium","business","first"];
+let oneWay = false;
+
+$("airports").innerHTML = Object.entries(AIRPORTS).map(([c,n])=>`<option value="${c}">${n}</option>`).join("");
+$("chips").innerHTML = POPULAR.map(([a,b])=>`<button type="button" data-a="${a}" data-b="${b}">${a} → ${b}</button>`).join("");
+
+// datas de exemplo: ida em ~6 semanas, volta 10 dias depois
+const today = new Date(); today.setHours(12);
+const d1 = new Date(today); d1.setDate(d1.getDate()+42);
+const d2 = new Date(d1); d2.setDate(d2.getDate()+10);
+$("dep").value = iso(d1); $("ret").value = iso(d2);
+$("dep").min = iso(today); $("ret").min = iso(today);
+// Retoma a última busca feita neste navegador, se as datas ainda forem futuras
+try{
+  const last = JSON.parse(localStorage.getItem("radar-busca"));
+  if(last && /^[A-Z]{3}$/.test(last.from) && /^[A-Z]{3}$/.test(last.to)){
+    $("from").value = last.from; $("to").value = last.to;
+    if(last.dep && last.dep >= iso(today)){ $("dep").value = last.dep; if(last.ret && last.ret >= last.dep) $("ret").value = last.ret; }
+    if(last.pax) $("pax").value = String(last.pax);
+    if(last.cabin && CABIN_PT_KEYS.includes(last.cabin)) $("cabin").value = last.cabin;
+    oneWay = !!last.oneWay;
+  }
+}catch(_){}
+
+function state(){
+  return {from:$("from").value.trim().toUpperCase(), to:$("to").value.trim().toUpperCase(),
+    dep:$("dep").value, ret:oneWay?"":$("ret").value, pax:+$("pax").value, cabin:$("cabin").value};
+}
+const SKY_CABIN = {economy:"economy",premium:"premiumeconomy",business:"business",first:"first"};
+const GF_CABIN = {economy:"",premium:" premium economy",business:" business class",first:" first class"};
+const CABIN_PT = {economy:"Econômica",premium:"Premium Economy",business:"Executiva",first:"Primeira"};
+
+function links(s){
+  const yymmdd = d => d.slice(2).replace(/-/g,"");
+  const gq = `Flights from ${s.from} to ${s.to} on ${s.dep}` + (s.ret?` through ${s.ret}`:" one way") + GF_CABIN[s.cabin] + (s.pax>1?` ${s.pax} adults`:"");
+  const google = `https://www.google.com/travel/flights?hl=pt-BR&curr=BRL&q=${encodeURIComponent(gq)}`;
+  const sky = `https://www.skyscanner.com.br/transporte/passagens-aereas/${s.from.toLowerCase()}/${s.to.toLowerCase()}/${yymmdd(s.dep)}/` + (s.ret?`${yymmdd(s.ret)}/`:"") + `?adultsv2=${s.pax}&cabinclass=${SKY_CABIN[s.cabin]}&rtn=${s.ret?1:0}`;
+  const kpath = `/${s.from}-${s.to}/${s.dep}` + (s.ret?`/${s.ret}`:"") + (s.cabin!=="economy"?`/${s.cabin}`:"") + (s.pax>1?`/${s.pax}adults`:"") + "?sort=price_a";
+  return {
+    google,
+    cash:[
+      ["Google Voos","Calendário e gráfico de preços",google],
+      ["Skyscanner","Compara companhias e agências",sky],
+      ["Kayak","Ordenado pelo menor preço","https://www.kayak.com.br/flights"+kpath],
+      ["Momondo","Bom para combinações de trechos","https://www.momondo.com.br/flight-search"+kpath]
+    ],
+    miles:[
+      ["Smiles","Programa da GOL e parceiras","https://www.smiles.com.br/"],
+      ["LATAM Pass","Resgates LATAM e oneworld","https://latampass.latam.com/pt_br/"],
+      ["Azul Fidelidade","Resgates Azul e parceiras","https://www.voeazul.com.br/br/pt/programa-fidelidade"],
+      ["Seats.aero","Disponibilidade de assentos em milhas","https://seats.aero/"]
+    ]
+  };
+}
+const card = ([t,d,u]) => `<a class="go" href="${u}" target="_blank" rel="noopener"><div><strong>${t}</strong><span>${d}</span></div><span class="arrow">→</span></a>`;
+
+function render(){
+  const s = state();
+  $("fromName").textContent = AIRPORTS[s.from] || (s.from.length===3?"Código IATA":"");
+  $("toName").textContent = AIRPORTS[s.to] || (s.to.length===3?"Código IATA":"");
+  $("ret").disabled = oneWay;
+  $("rt").setAttribute("aria-pressed",!oneWay); $("ow").setAttribute("aria-pressed",oneWay);
+  let e = "";
+  if(!/^[A-Z]{3}$/.test(s.from)||!/^[A-Z]{3}$/.test(s.to)) e="Use o código de 3 letras do aeroporto, como GRU ou LIS.";
+  else if(s.from===s.to) e="Origem e destino estão iguais. Troque um dos dois.";
+  else if(!s.dep) e="Escolha a data de ida.";
+  else if(s.dep<ymd(today)) e="A data de ida já passou. Escolha hoje ou uma data futura.";
+  else if(!oneWay && (!s.ret || s.ret<s.dep)) e="A volta precisa ser no mesmo dia ou depois da ida.";
+  $("err").hidden = !e; $("err").textContent = e;
+  const res = document.querySelector(".results");
+  res.style.opacity = e?".45":"1"; res.style.pointerEvents = e?"none":"";
+  $("ret").min = s.dep || iso(today);
+  try{ if(!e) localStorage.setItem("radar-busca", JSON.stringify({...s, ret:$("ret").value, oneWay})); }catch(_){}
+  if(e) return;
+  const L = links(s);
+  $("summary").textContent = `${s.from} → ${s.to} · ${fmtBR(s.dep)}${s.ret?" a "+fmtBR(s.ret):" (só ida)"} · ${s.pax} adulto${s.pax>1?"s":""} · ${CABIN_PT[s.cabin]}`;
+  $("mainCta").href = L.google;
+  $("cash").innerHTML = L.cash.map(card).join("");
+  $("miles").innerHTML = L.miles.map(card).join("");
+}
+
+function calc(){
+  const p=+$("cPrice").value, m=+$("cMiles").value, t=+$("cTax").value, c=+$("cCost").value;
+  if(!(p>0&&m>0)){ $("cVal").innerHTML="—"; $("cPill").textContent=""; $("cText").textContent="Informe o preço e as milhas."; return; }
+  const v = (p - t) / m * 1000;
+  const brl = x => x.toLocaleString("pt-BR",{style:"currency",currency:"BRL"});
+  $("cVal").innerHTML = `${brl(v)} <small>/ milheiro</small>`;
+  const pill=$("cPill");
+  if(v<=0){pill.className="pill warn";pill.textContent="Pague em reais";$("cText").textContent="As taxas já custam mais do que a tarifa pagante.";}
+  else if(!c){pill.className="pill";pill.textContent="";$("cText").textContent=`Cada 1.000 milhas estão valendo ${brl(v)} neste resgate.`;}
+  else if(v>=c){pill.className="pill good";pill.textContent="Use milhas";$("cText").textContent=`O resgate rende ${brl(v)} por milheiro, ${(v/c).toFixed(1).replace(".",",")}× o seu custo de ${brl(c)}. Economia estimada: ${brl(p-t-m/1000*c)}.`;}
+  else{pill.className="pill warn";pill.textContent="Pague em reais";$("cText").textContent=`O resgate rende só ${brl(v)} por milheiro, abaixo do seu custo de ${brl(c)}. Guarde as milhas para um resgate melhor.`;}
+}
+
+["from","to"].forEach(id=>$(id).addEventListener("input",e=>{e.target.value=e.target.value.toUpperCase().replace(/[^A-Z]/g,"");render();}));
+["dep","ret","pax","cabin"].forEach(id=>$(id).addEventListener("change",()=>{ if($("dep").value&&$("ret").value<$("dep").value&&!oneWay) $("ret").value=addDays($("dep").value,7); render();}));
+$("rt").onclick=()=>{oneWay=false;render();}; $("ow").onclick=()=>{oneWay=true;render();};
+$("swap").onclick=()=>{const a=$("from").value;$("from").value=$("to").value;$("to").value=a;render();};
+$("chips").addEventListener("click",e=>{const b=e.target.closest("button");if(!b)return;$("from").value=b.dataset.a;$("to").value=b.dataset.b;render();});
+["cPrice","cMiles","cTax","cCost"].forEach(id=>$(id).addEventListener("input",calc));
+function renderDeals(){
+  $("tabCash").setAttribute("aria-selected",dealTab==="cash");
+  $("tabMiles").setAttribute("aria-selected",dealTab==="miles");
+  const list = activeDeals(dealTab);
+  if(!list.length){ $("deals").innerHTML = `<p class="sub" style="margin:0">As ofertas desta aba já venceram. Use a busca abaixo para encontrar os preços de hoje.</p>`; return; }
+  $("deals").innerHTML = list.map((d,i)=>`
+    <article class="deal">
+      ${(sc => `<div class="pic">${sc.svg}<span class="cap">${sc.name}</span></div>`)(sceneSVG(d.fill[1]))}
+      <div class="body">
+      <span class="badge">${d.badge}</span>
+      <div class="route">${flagOf(d)}${d.route}</div>
+      <h3>${d.title}</h3>
+      <div><div class="from">A partir de</div><div class="price">${d.price}<small>${d.unit==="a partir de"?"":d.unit}</small></div></div>
+      <ul>${d.info.map(x=>`<li>${x}</li>`).join("")}${d.until===todayYMD?`<li style="color:var(--warn);font-weight:600">Último dia da oferta</li>`:""}</ul>
+      <div class="acts"><button type="button" data-i="${i}">Montar busca</button><a href="${d.src}" target="_blank" rel="noopener">Ver oferta</a></div>
+      </div>
+    </article>`).join("");
+}
+$("tabCash").onclick=()=>{dealTab="cash";renderDeals();};
+$("tabMiles").onclick=()=>{dealTab="miles";renderDeals();};
+$("deals").addEventListener("click",e=>{
+  const b=e.target.closest("button[data-i]"); if(!b) return;
+  const d=activeDeals(dealTab)[+b.dataset.i], [a,z,cab]=d.fill;
+  $("from").value=a; $("to").value=z; $("cabin").value=cab;
+  // Ofertas em milhas valem por trecho e numa data específica
+  if(d.date){ oneWay=true; $("dep").value=d.date; }
+  else if(dealTab==="cash"){ oneWay=false; if($("ret").value<=$("dep").value){ $("ret").value=addDays($("dep").value,10); } }
+  render();
+  $("form").scrollIntoView({behavior:matchMedia("(prefers-reduced-motion: reduce)").matches?"auto":"smooth",block:"start"});
+});
+// ---- Preço ao longo do ano ----
+const MES = ["jan","fev","mar","abr","mai","jun","jul","ago","set","out","nov","dez"];
+const MES_LONGO = ["janeiro","fevereiro","março","abril","maio","junho","julho","agosto","setembro","outubro","novembro","dezembro"];
+const brl0 = v => v.toLocaleString("pt-BR",{style:"currency",currency:"BRL",maximumFractionDigits:0});
+const parseBRL = s => { const n = parseFloat(String(s).replace(/[^\d,]/g,"").replace(",",".")); return isFinite(n)&&n>0 ? n : null; };
+const tStore = {
+  get(k){ try{ return JSON.parse(localStorage.getItem(k)) || {}; }catch(e){ return {}; } },
+  set(k,v){ try{ localStorage.setItem(k,JSON.stringify(v)); }catch(e){} }
+};
+(() => {
+  const codes = Object.keys(AIRPORTS);
+  const opt = c => `<option value="${c}">${c} · ${AIRPORTS[c]}</option>`;
+  const html = `<optgroup label="Brasil">${codes.filter(c=>countryOf(c)==="BR").map(opt).join("")}</optgroup><optgroup label="Exterior">${codes.filter(c=>countryOf(c)!=="BR").map(opt).join("")}</optgroup>`;
+  $("tFrom").innerHTML = html; $("tTo").innerHTML = html;
+  $("tFrom").value = "GRU"; $("tTo").value = "LIS";
+})();
+const tToday = new Date(); tToday.setHours(12,0,0,0);
+const tMax = new Date(tToday); tMax.setFullYear(tMax.getFullYear()+1);
+{ const d = new Date(tToday); d.setDate(d.getDate()+30); $("tDep").value = ymd(d); }
+$("tDep").min = ymd(tToday); $("tDep").max = ymd(tMax);
+
+function tState(){ return {from:$("tFrom").value, to:$("tTo").value, dep:$("tDep").value, days:+$("tDays").value}; }
+const tKey = s => `radar-precos:${s.from}-${s.to}:${s.days?"iv":"ida"}`;
+function tLinks(s, dep){
+  const ret = s.days ? addDays(dep, s.days) : "";
+  const gq = `Flights from ${s.from} to ${s.to} on ${dep}` + (ret ? ` through ${ret}` : " one way");
+  const yymm = d => d.slice(2,7).replace("-","");
+  return {
+    google: `https://www.google.com/travel/flights?hl=pt-BR&curr=BRL&q=${encodeURIComponent(gq)}`,
+    sky: `https://www.skyscanner.com.br/transporte/passagens-aereas/${s.from.toLowerCase()}/${s.to.toLowerCase()}/${yymm(dep)}/` + (ret ? `${yymm(ret)}/` : "") + `?adultsv2=1&cabinclass=economy&rtn=${ret?1:0}`,
+    kayak: `https://www.kayak.com.br/flights/${s.from}-${s.to}/${dep}` + (ret ? `/${ret}` : "") + "?sort=price_a"
+  };
+}
+// Os 12 meses a partir do mês atual, com a ida no mesmo dia do mês escolhido
+function tMonths(s){
+  const day = +(s.dep || ymd(tToday)).slice(8,10);
+  const out = [];
+  for(let i=0;i<12;i++){
+    const first = new Date(tToday.getFullYear(), tToday.getMonth()+i, 1, 12);
+    const last = new Date(first.getFullYear(), first.getMonth()+1, 0, 12).getDate();
+    let d = new Date(first.getFullYear(), first.getMonth(), Math.min(day,last), 12);
+    if(d < tToday) d = new Date(tToday);
+    if(d > tMax) d = new Date(tMax);
+    out.push({key:`${first.getFullYear()}-${pad2(first.getMonth()+1)}`, m:first.getMonth(), y:first.getFullYear(), dep:ymd(d)});
+  }
+  return out;
+}
+function tDealFor(s){
+  return activeDeals("cash").find(d => d.fill[0]===s.from && d.fill[1]===s.to && d.fill[2]==="economy" && parseBRL(d.price));
+}
+
+function renderTrend(){
+  const s = tState();
+  let e = "";
+  if(s.from===s.to) e = "Origem e destino estão iguais. Troque um dos dois.";
+  else if(!s.dep) e = "Escolha a data da ida.";
+  else if(s.dep < ymd(tToday) || s.dep > ymd(tMax)) e = "Escolha uma data entre hoje e daqui a um ano.";
+  $("tErr").hidden = !e; $("tErr").textContent = e;
+  $("tActs").style.opacity = e ? ".45" : "1";
+  if(!e){ const L = tLinks(s, s.dep); $("tGoogle").href = L.google; $("tSky").href = L.sky; $("tKayak").href = L.kayak; }
+  const deal = tDealFor(s);
+  $("tDeal").hidden = !deal;
+  if(deal) $("tDeal").innerHTML = `Promoção atual para este trecho: <strong>${deal.price}</strong> ${deal.unit} · <a href="${deal.src}" target="_blank" rel="noopener">ver oferta</a>`;
+  const months = tMonths(s), saved = tStore.get(tKey(s)), selKey = (s.dep||"").slice(0,7);
+  $("tMonths").innerHTML = months.map(mo => {
+    const L = tLinks(s, mo.dep), v = saved[mo.key];
+    return `<div class="mo${mo.key===selKey?" sel":""}">
+      <div class="mo-h"><strong>${MES[mo.m]} ${mo.y}</strong><span>ida ${fmtBR(mo.dep).slice(0,5)}</span></div>
+      <label class="sr" for="tp-${mo.key}">Menor preço encontrado em ${MES_LONGO[mo.m]} de ${mo.y}</label>
+      <input id="tp-${mo.key}" data-k="${mo.key}" inputmode="decimal" autocomplete="off" placeholder="R$ anotar" value="${v ? v.toLocaleString("pt-BR") : ""}">
+      <div class="mo-l"><a href="${L.google}" target="_blank" rel="noopener">Google Voos</a><a href="${L.sky}" target="_blank" rel="noopener">Skyscanner</a></div>
+      <small class="mo-s" data-s="${mo.key}"></small>
+    </div>`;
+  }).join("");
+  drawTrend(s, months, saved, deal);
+}
+
+function drawTrend(s, months, saved, deal){
+  const W=Math.max(300, Math.round($("tChart").clientWidth || 720)), H=W<520?220:250, pl=W<520?52:64, pr=W<520?6:14, pt=26, pb=34;
+  const vals = months.map(mo => saved[mo.key] || null);
+  const have = vals.filter(Boolean);
+  const ref = deal ? parseBRL(deal.price) : null;
+  const box = $("tChart");
+  const label = s.days ? `ida e volta, ${s.days} dias` : "só ida";
+  if(!have.length){
+    box.innerHTML = `<svg viewBox="0 0 ${W} 120" role="img" aria-label="Gráfico vazio"><rect x="0" y="0" width="${W}" height="120" rx="10" fill="var(--bg)" stroke="var(--line)" stroke-dasharray="4 4"/><text class="empty" x="${W/2}" y="64" text-anchor="middle">Anote o preço de pelo menos um mês abaixo para ver a variação de ${s.from} → ${s.to} (${label}).</text></svg>`;
+    $("tSum").textContent = "";
+    return;
+  }
+  const top = Math.max(...have, ref||0);
+  const stepRaw = top/4, mag = Math.pow(10, Math.floor(Math.log10(stepRaw)));
+  const step = [1,1.5,2,2.5,3,4,5,10].map(f=>f*mag).find(x => x >= stepRaw);
+  const ymax = step*4;
+  const y = v => pt + (H-pt-pb) * (1 - v/ymax);
+  const slot = (W-pl-pr)/12, bw = Math.min(30, slot*0.56);
+  const minV = Math.min(...have), minI = vals.indexOf(minV);
+  let g = "";
+  for(let k=0;k<=4;k++){ const v=step*k, yy=y(v);
+    g += `<line class="grid" x1="${pl}" x2="${W-pr}" y1="${yy}" y2="${yy}"/><text class="axis" x="${pl-8}" y="${yy+4}" text-anchor="end">${brl0(v).replace(/\s/g," ")}</text>`; }
+  months.forEach((mo,i) => {
+    const cx = pl + slot*i + slot/2, v = vals[i];
+    g += `<text class="axis" x="${cx}" y="${H-pb+16}" text-anchor="middle"${W<520?' style="font-size:9px"':''}>${MES[mo.m]}</text>`;
+    if(i===0 || mo.m===0) g += `<text class="axis" x="${cx}" y="${H-pb+30}" text-anchor="middle">${mo.y}</text>`;
+    if(v){
+      const x0 = cx-bw/2, y0 = y(v), yb = y(0), r = Math.min(4, (yb-y0));
+      g += `<path class="bar${i===minI?" min":""}" d="M${x0},${yb} V${y0+r} Q${x0},${y0} ${x0+r},${y0} H${x0+bw-r} Q${x0+bw},${y0} ${x0+bw},${y0+r} V${yb} Z"/>`;
+      if(i===minI) g += `<text class="val" x="${cx}" y="${y0-14}" text-anchor="middle">menor</text><text class="val" x="${cx}" y="${y0-3}" text-anchor="middle">${brl0(v)}</text>`;
+    }
+  });
+  if(ref){ const yr = y(ref);
+    g += `<line class="ref" x1="${pl}" x2="${W-pr}" y1="${yr}" y2="${yr}"/><text class="axis" x="${W-pr}" y="${yr-6}" text-anchor="end">promoção atual ${brl0(ref)}</text>`; }
+  months.forEach((mo,i) => {
+    const x0 = pl + slot*i;
+    g += `<rect class="hit" data-i="${i}" x="${x0}" y="${pt}" width="${slot}" height="${H-pt-pb}" tabindex="0" aria-label="${MES_LONGO[mo.m]} de ${mo.y}: ${vals[i]?brl0(vals[i]):"sem anotação"}"/>`;
+  });
+  box.innerHTML = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Menor preço anotado por mês, ${s.from} para ${s.to}, ${label}">${g}</svg><div class="ttip" hidden></div>`;
+  const tip = box.querySelector(".ttip"), svg = box.querySelector("svg");
+  const show = el => {
+    const i = +el.dataset.i, mo = months[i], v = vals[i];
+    const bb = svg.getBoundingClientRect(), k = bb.width / W;
+    const cx = (pl + slot*i + slot/2) * k, cy = (v ? y(v) : y(0)) * k;
+    tip.innerHTML = `${MES_LONGO[mo.m]} ${mo.y} · ida ${fmtBR(mo.dep).slice(0,5)}<br><strong>${v ? brl0(v) : "sem anotação"}</strong>` + (v && v!==minV ? ` <span style="opacity:.75">+${brl0(v-minV)} vs. menor</span>` : "");
+    tip.style.left = Math.max(70, Math.min(bb.width-70, cx)) + "px"; tip.style.top = cy + "px"; tip.hidden = false;
+  };
+  box.querySelectorAll(".hit").forEach(el => {
+    el.addEventListener("pointerenter", () => show(el)); el.addEventListener("focus", () => show(el));
+    el.addEventListener("pointerleave", () => tip.hidden = true); el.addEventListener("blur", () => tip.hidden = true);
+  });
+  if(have.length < 2){ $("tSum").textContent = `Você anotou 1 mês. Anote mais meses para comparar.`; return; }
+  const maxV = Math.max(...have), maxI = vals.indexOf(maxV);
+  const fm = i => `${MES_LONGO[months[i].m]} de ${months[i].y}`;
+  $("tSum").innerHTML = `Mais barato: <strong>${fm(minI)}, ${brl0(minV)}</strong>. Mais caro: ${fm(maxI)}, ${brl0(maxV)}. Diferença de ${brl0(maxV-minV)} (${Math.round((maxV-minV)/maxV*100)}% a menos no mês mais barato). ${have.length} de 12 meses anotados.`;
+}
+
+["tFrom","tTo","tDep","tDays"].forEach(id => $(id).addEventListener("change", renderTrend));
+$("tSwap").onclick = () => { const a=$("tFrom").value; $("tFrom").value=$("tTo").value; $("tTo").value=a; renderTrend(); };
+$("tMonths").addEventListener("change", e => {
+  const inp = e.target.closest("input[data-k]"); if(!inp) return;
+  const s = tState(), k = tKey(s), data = tStore.get(k), v = parseBRL(inp.value);
+  if(v) data[inp.dataset.k] = v; else delete data[inp.dataset.k];
+  tStore.set(k, data);
+  inp.value = v ? v.toLocaleString("pt-BR") : "";
+  drawTrend(s, tMonths(s), data, tDealFor(s));
+});
+$("tClear").onclick = () => { const s=tState(); tStore.set(tKey(s), {}); renderTrend(); };
+// ---- Preenchimento automático pelo navegador do app Claude ----
+const BROWSER = "host:claude_browser";
+let tMcp = null, tRun = null;
+const tMsg = t => { $("tAutoMsg").textContent = t; };
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+let tMode = null;
+(async () => {
+  if(window.RADAR_API){
+    tMode = "api";
+    $("tAutoDesc").textContent = "Busca de uma vez o menor preço de cada um dos próximos 12 meses nas tarifas encontradas por viajantes no Aviasales nos últimos dias. Rotas pouco buscadas podem ficar com meses sem preço.";
+    $("tAuto").hidden = false; $("tAutoOff").hidden = true;
+    return;
+  }
+  let ok = false;
+  try { tMcp = window.claude && window.claude.use ? await window.claude.use("mcp") : null; } catch(e) { tMcp = null; }
+  if(tMcp){ try { const r = await tMcp.listTools(BROWSER); ok = (r.servers||[]).some(x => x.server === BROWSER); } catch(e) { ok = false; } }
+  if(ok) tMode = "browser";
+  $("tAuto").hidden = !ok; $("tAutoOff").hidden = ok;
+})();
+const textOf = r => {
+  if(!r) return "";
+  const blocks = (r.content||[]).filter(b => b.type === "text").map(b => b.text).join("\n");
+  const p = r.payload;
+  const pt = typeof p === "string" ? p : (p && typeof p === "object" ? (typeof p.text === "string" ? p.text : JSON.stringify(p)) : "");
+  return blocks + "\n" + pt;
+};
+const tabIdOf = r => {
+  const p = r && r.payload;
+  if(p && typeof p === "object" && p.tabId != null) return p.tabId;
+  const t = textOf(r), m = t.match(/"tabId"\s*:\s*(\d+)/) || t.match(/tab\s*id\D{0,4}(\d+)/i);
+  return m ? +m[1] : null;
+};
+// Menor preço em reais na página, ignorando faixas do tipo "normalmente custa entre"
+function minPrice(t){
+  t = t.replace(/(normalmente|geralmente|costuma|tipicamente|típic)[^.\n]{0,90}/gi, " ");
+  const re = /R\$\s?(\d{1,3}(?:\.\d{3})+|\d{3,6})(?:,\d{2})?/g; let m, best = null;
+  while((m = re.exec(t))){
+    const v = +m[1].replace(/\./g, "");
+    if(v >= 150 && v < 200000 && (best === null || v < best)) best = v;
+  }
+  return best;
+}
+const ERR_TXT = {
+  server_not_connected: "O navegador do Claude não respondeu. Abra esta página no app Claude para computador e tente de novo.",
+  cancelled: "Você recusou a ação no app Claude, então parei a busca.",
+  not_in_manifest: "A página não tem permissão para usar o navegador do Claude. Autorize no aviso do app ou no menu de permissões do artifact.",
+  approval_required: "A busca precisa da sua aprovação no app Claude. Clique de novo e autorize.",
+  consent_required: "A busca precisa da sua aprovação no app Claude. Clique de novo e autorize.",
+  blocked_by_policy: "A política da sua organização bloqueia o uso do navegador do Claude por esta página.",
+  server_unavailable: "O navegador do Claude demorou para responder. Tente de novo em instantes."
+};
+// Modo site: um servidor próprio (window.RADAR_API) devolve o menor preço de cada mês
+async function autoFillApi(){
+  if(tRun) return;
+  const s = tState();
+  if(s.from === s.to){ tMsg("Origem e destino estão iguais."); return; }
+  const key = tKey(s), data = tStore.get(key), months = tMonths(s);
+  const same = () => tKey(tState()) === key;
+  tRun = {stop:false}; $("tAutoBtn").disabled = true;
+  tMsg("Buscando os preços dos próximos 12 meses…");
+  try{
+    const q = new URLSearchParams({from:s.from, to:s.to, days:String(s.days)});
+    const r = await fetch(`${window.RADAR_API}?${q}`);
+    const j = await r.json().catch(() => ({}));
+    if(!r.ok) throw new Error(j.error === "no_token" ? "O site ainda não tem a chave da API configurada (TRAVELPAYOUTS_TOKEN)." : (j.message || `O servidor respondeu com erro ${r.status}.`));
+    let found = 0;
+    months.forEach(mo => {
+      const v = j.months && j.months[mo.key];
+      if(v && v.price > 0){ data[mo.key] = Math.round(v.price); found++; }
+    });
+    tStore.set(key, data);
+    if(same()){
+      renderTrend();
+      months.forEach(mo => {
+        const v = j.months && j.months[mo.key], el = document.querySelector(`.mo-s[data-s="${mo.key}"]`);
+        if(!el) return;
+        if(v && v.price > 0){
+          const dt = v.departure_at ? ` · ida ${fmtBR(v.departure_at.slice(0,10)).slice(0,5)}` : "";
+          el.innerHTML = v.link ? `<a href="${encodeURI(v.link)}" target="_blank" rel="noopener" style="color:var(--accent)">automático${dt}</a>` : `automático${dt}`;
+        } else el.textContent = "sem preço recente";
+      });
+    }
+    const now = new Date();
+    tMsg(found
+      ? `Pronto: ${found} de 12 meses com preço, ${s.from} → ${s.to}, em ${pad2(now.getDate())}/${pad2(now.getMonth()+1)} às ${pad2(now.getHours())}:${pad2(now.getMinutes())}. Preço para 1 adulto; toque em "automático" no mês para ver a oferta.`
+      : "Ainda não há preços recentes para este trecho. Tente outra rota ou duração, ou anote manualmente.");
+  } catch(e){
+    tMsg(e && e.message && !/fetch/i.test(e.message) ? e.message : "Não consegui buscar os preços. Verifique a conexão e tente de novo.");
+  } finally {
+    tRun = null; $("tAutoBtn").disabled = false;
+  }
+}
+async function autoFill(){
+  if(tMode === "api") return autoFillApi();
+  if(!tMcp || tRun || liveRun) return;
+  const s = tState();
+  if(s.from === s.to){ tMsg("Origem e destino estão iguais."); return; }
+  const key = tKey(s), data = tStore.get(key), months = tMonths(s);
+  let todo = months.filter(mo => !data[mo.key]); if(!todo.length) todo = months;
+  tRun = {stop:false}; $("tAutoBtn").disabled = true; $("tStop").hidden = false;
+  const same = () => tKey(tState()) === key;
+  const mark = (k,t) => { if(!same()) return; const el = document.querySelector(`.mo-s[data-s="${k}"]`); if(el) el.textContent = t; };
+  let tab, found = 0, miss = 0, err = null;
+  try{
+    for(const [n, mo] of todo.entries()){
+      if(tRun.stop) break;
+      tMsg(`Buscando ${MES_LONGO[mo.m]} de ${mo.y} (${n+1} de ${todo.length})…`); mark(mo.key, "buscando…");
+      const url = tLinks(s, mo.dep).google;
+      if(tab === undefined){ const r = await tMcp.callTool(BROWSER, "preview_start", {url}, {cache:false}); tab = tabIdOf(r); }
+      else await tMcp.callTool(BROWSER, "navigate", tab === null ? {url} : {url, tabId:tab}, {cache:false});
+      let v = null;
+      for(let a = 0; a < 4 && v === null && !tRun.stop; a++){
+        await sleep(a ? 2500 : 4000);
+        let r;
+        try { r = await tMcp.callTool(BROWSER, "get_page_text", tab === null ? {} : {tabId:tab}, {cache:false}); }
+        catch(e){ if(e && e.retryable && a < 3){ await sleep(Math.min(e.retryAfterMs||2000, 8000)); continue; } throw e; }
+        v = minPrice(textOf(r));
+      }
+      if(v){
+        data[mo.key] = v; tStore.set(key, data); found++; mark(mo.key, "automático");
+        if(same()){ const inp = document.getElementById("tp-"+mo.key); if(inp) inp.value = v.toLocaleString("pt-BR"); drawTrend(s, months, data, tDealFor(s)); }
+      } else if(!tRun.stop){ miss++; mark(mo.key, "sem preço encontrado"); }
+    }
+  } catch(e){
+    err = e || {};
+  } finally {
+    const stopped = tRun && tRun.stop;
+    tRun = null; $("tAutoBtn").disabled = false; $("tStop").hidden = true;
+    const now = new Date(), hora = `${pad2(now.getDate())}/${pad2(now.getMonth()+1)} às ${pad2(now.getHours())}:${pad2(now.getMinutes())}`;
+    const res = `${found} ${found === 1 ? "mês preenchido" : "meses preenchidos"}` + (miss ? `, ${miss} sem preço encontrado` : "");
+    if(err){
+      const base = ERR_TXT[err.code] || (err.code === "tool_error" ? `O navegador do Claude informou um erro: ${err.message||"sem detalhes"}` : `Não consegui concluir a busca (${err.code||"erro desconhecido"}).`);
+      tMsg(base + (found ? ` Antes disso: ${res}.` : ""));
+    } else tMsg(`${stopped ? "Busca interrompida" : "Pronto"}: ${res}, ${s.from} → ${s.to}, em ${hora}. Valores do Google Voos para 1 adulto; confira antes de comprar.`);
+  }
+}
+// ---- Pesquisa de preços dentro do app (navegador do app Claude + Claude para organizar) ----
+const esc = v => String(v==null?"":v).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+let liveRun = null, liveSample = null;
+(async () => {
+  let ok = false, mcp = null;
+  try { mcp = window.claude && window.claude.use ? await window.claude.use("mcp") : null; } catch(e) { mcp = null; }
+  if(mcp){ try { const r = await mcp.listTools(BROWSER); ok = (r.servers||[]).some(x => x.server === BROWSER); } catch(e) { ok = false; } }
+  if(ok && !tMcp) tMcp = mcp;
+  $("liveBtn").hidden = !ok; $("liveDesc").hidden = !ok; $("liveOff").hidden = ok;
+  try { liveSample = window.claude && window.claude.use ? await window.claude.use("sample") : null; } catch(e) { liveSample = null; }
+})();
+function liveSources(s){
+  const L = links(s);
+  return [["Google Voos", L.google], ["Kayak", L.cash[2][2]], ["Skyscanner", L.cash[1][2]]];
+}
+const liveChip = (st) => $("liveSrc").innerHTML = st.map(([n,c]) => `<span class="${c}">${esc(n)}${c==="ok"?" ✓":c==="no"?" sem preços":c==="run"?" …":""}</span>`).join("");
+async function liveSearch(){
+  if(liveRun || tRun || !tMcp) return;
+  const s = state();
+  if(!$("err").hidden){ $("liveMsg").textContent = "Corrija o trecho e as datas acima antes de pesquisar."; return; }
+  const srcs = liveSources(s), st = srcs.map(([n]) => [n,""]), pages = [];
+  liveRun = {stop:false, ctl:null};
+  $("liveBtn").disabled = true; $("liveStop").hidden = false; $("liveSrc").hidden = false; $("liveRes").innerHTML = "";
+  const label = `${s.from} → ${s.to} · ${fmtBR(s.dep)}${s.ret?" a "+fmtBR(s.ret):" (só ida)"} · ${s.pax} adulto${s.pax>1?"s":""} · ${CABIN_PT[s.cabin]}`;
+  let tab, err = null;
+  try{
+    for(const [i,[name,url]] of srcs.entries()){
+      if(liveRun.stop) break;
+      st[i][1] = "run"; liveChip(st); $("liveMsg").textContent = `Pesquisando no ${name} (${i+1} de ${srcs.length})…`;
+      if(tab === undefined){ const r = await tMcp.callTool(BROWSER, "preview_start", {url}, {cache:false}); tab = tabIdOf(r); }
+      else await tMcp.callTool(BROWSER, "navigate", tab === null ? {url} : {url, tabId:tab}, {cache:false});
+      let text = "", v = null;
+      for(let a = 0; a < 4 && v === null && !liveRun.stop; a++){
+        await sleep(a ? 3000 : 5000);
+        let r;
+        try { r = await tMcp.callTool(BROWSER, "get_page_text", tab === null ? {} : {tabId:tab}, {cache:false}); }
+        catch(e){ if(e && e.retryable && a < 3){ await sleep(Math.min(e.retryAfterMs||2000, 8000)); continue; } throw e; }
+        text = textOf(r); v = minPrice(text);
+      }
+      st[i][1] = v ? "ok" : "no"; liveChip(st);
+      if(v) pages.push({name, url, min:v, text:text.replace(/\s+/g," ").slice(0,14000)});
+    }
+  } catch(e){ err = e || {}; }
+  if(err && !pages.length){
+    const base = ERR_TXT[err.code] || (err.code === "tool_error" ? `O navegador do Claude informou um erro: ${err.message||"sem detalhes"}` : `Não consegui concluir a pesquisa (${err.code||"erro desconhecido"}).`);
+    $("liveMsg").textContent = base; return liveEnd();
+  }
+  if(!pages.length){
+    $("liveMsg").textContent = liveRun.stop ? "Pesquisa interrompida." : "Nenhum site mostrou preços para este trecho. Os sites podem ter pedido verificação; tente outra data ou abra os links abaixo.";
+    return liveEnd();
+  }
+  let flights = null;
+  if(liveSample && !liveRun.stop){
+    $("liveMsg").textContent = "Organizando os voos encontrados…";
+    const prompt = `Abaixo está o texto de páginas de resultado de busca de passagens aéreas (${pages.map(p=>p.name).join(", ")}) para ${label}. Extraia os voos com preço em reais que aparecem no texto. Use SOMENTE preços, companhias, horários e paradas que estejam escritos no texto; nunca invente nem estime. Ignore faixas como "normalmente custa", anúncios e preços de hotel. Responda só com um array JSON de até 12 objetos, ordenado do menor para o maior preço, no formato: [{"fonte":"Google Voos","cia":"LATAM","preco":3550,"saida":"22:10","chegada":"11:45+1","duracao":"10 h 35 min","paradas":"Direto","obs":"preço ida e volta"}]. "preco" é número inteiro em reais; campos ausentes ficam "". Se nenhum voo com preço aparecer, responda [].\n\n` + pages.map(p => `=== ${p.name} ===\n${p.text}`).join("\n\n");
+    liveRun.ctl = new AbortController();
+    try {
+      const j = await liveSample.json(prompt, {signal: liveRun.ctl.signal, modelTier:"quick", cache:false});
+      if(Array.isArray(j)) flights = j.filter(f => f && Number(f.preco) > 0).map(f => ({...f, preco:Math.round(Number(f.preco))})).sort((a,b) => a.preco-b.preco).slice(0,12);
+    } catch(e){
+      if(e && e.code === "not_granted") liveSample = null;
+      flights = null;
+    }
+  }
+  const urlOf = n => (pages.find(p => p.name === n) || pages[0]).url;
+  const now = new Date(), hora = `${pad2(now.getDate())}/${pad2(now.getMonth()+1)} às ${pad2(now.getHours())}:${pad2(now.getMinutes())}`;
+  if(flights && flights.length){
+    $("liveRes").innerHTML = flights.map((f,i) => {
+      const src = pages.some(p => p.name === f.fonte) ? f.fonte : "";
+      const meta = [f.saida && f.chegada ? `${f.saida} – ${f.chegada}` : (f.saida||""), f.duracao, f.paradas, f.obs].filter(Boolean).map(esc).join(" · ");
+      return `<div class="flt${i===0?" best":""}"><div><div class="al">${esc(f.cia||"Companhia não informada")}${i===0?'<span class="tag2">menor preço</span>':""}</div><div class="meta">${meta}</div></div><div class="pr">${brl0(f.preco)}<small>${esc(src||"")}</small></div><a href="${esc(urlOf(src))}" target="_blank" rel="noopener">Abrir no ${esc(src||pages[0].name)} →</a></div>`;
+    }).join("");
+    $("liveMsg").textContent = `${flights.length} voos encontrados para ${label}, em ${hora}. Menor preço: ${brl0(flights[0].preco)}${flights[0].fonte?" no "+flights[0].fonte:""}. Confira no site antes de comprar.`;
+  } else {
+    const sorted = [...pages].sort((a,b) => a.min-b.min);
+    $("liveRes").innerHTML = sorted.map((p,i) => `<div class="flt${i===0?" best":""}"><div><div class="al">${esc(p.name)}${i===0?'<span class="tag2">menor preço</span>':""}</div><div class="meta">Menor valor que apareceu na página</div></div><div class="pr">${brl0(p.min)}<small>a partir de</small></div><a href="${esc(p.url)}" target="_blank" rel="noopener">Abrir no ${esc(p.name)} →</a></div>`).join("");
+    $("liveMsg").textContent = `Menor preço por site para ${label}, em ${hora}.` + (liveSample ? "" : " Para ver a lista de voos com companhia e horários, permita que a página use o Claude quando o app pedir.");
+  }
+  liveEnd();
+}
+function liveEnd(){ liveRun = null; $("liveBtn").disabled = false; $("liveStop").hidden = true; }
+$("liveBtn").onclick = liveSearch;
+$("liveStop").onclick = () => { if(liveRun){ liveRun.stop = true; if(liveRun.ctl) liveRun.ctl.abort(); $("liveMsg").textContent = "Parando…"; } };
+$("tAutoBtn").onclick = autoFill;
+$("tStop").onclick = () => { if(tRun){ tRun.stop = true; tMsg("Parando depois do mês atual…"); } };
+
+let tResize; let tLastW = 0;
+addEventListener("resize", () => { clearTimeout(tResize); tResize = setTimeout(() => { const w=$("tChart").clientWidth; if(Math.abs(w-tLastW)>8){ tLastW=w; const s=tState(); drawTrend(s, tMonths(s), tStore.get(tKey(s)), tDealFor(s)); } }, 150); });
+
+renderDeals(); render(); calc(); renderTrend();
+</script>
+</body>
+</html>
