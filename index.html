@@ -1051,7 +1051,7 @@ function renderDeals(){
   const dealCard = (d,i) => {
     const [a,z,cab] = d.fill, multi = /^BR\b/.test(d.route);
     // Uma companhia só: a do menor preço da oferta (cia vende direto; logo só identifica)
-    const who = d.pts ? PROGRAM[d.pts].name : d.cia ? AIRLINE[d.cia].name : d.logo ? airlineName(d.logo) : "Companhia aérea";
+    const who = d.pts ? PROGRAM[d.pts].name : d.cia ? AIRLINE[d.cia].name : d.logo ? airlineName(d.logo) : (d.srcName || "Companhia aérea");
     const codes = [d.pts || d.cia || d.logo].filter(Boolean);
     const age = d.age ? d.age : d.until ? `até ${fmtBR(d.until).slice(0,5)}` : d.date ? `voo em ${fmtBR(d.date).slice(0,5)}` : DEALS_AGE;
     return `
@@ -1306,7 +1306,7 @@ function liveDeal(o){
   const pub = Date.parse(o.pub || "");
   return {route:`${o.from || "BR"} → ${o.to}`, title:o.title, price, unit:o.roundTrip ? "ida e volta" : "a partir de",
     info:[`Melhores Destinos${pub ? " · publicada " + agoTxt(pub) : ""}`], badge:nat ? "Nacional" : "Internacional", fill:[o.from || (o.to === "GRU" || o.to === "CGH" ? "GIG" : "GRU"), o.to, "economy"], ...air,
-    age: pub ? agoTxt(pub) : "", src:o.url, live:true, n:o.price};
+    age: pub ? agoTxt(pub) : "", src:o.url, live:true, n:o.price, ...(o.airline ? {} : {srcName:"Melhores Destinos"})};
 }
 function liveBanner(cs){
   const c = (cs || []).find(c => c.price);
