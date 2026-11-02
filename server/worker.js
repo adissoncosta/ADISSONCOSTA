@@ -11,6 +11,7 @@
 
 const API = "https://api.travelpayouts.com/aviasales/v3/prices_for_dates";
 const CACHE_SECONDS = 1800;
+const PRICES_VERSION = 2;  // aumente ao mudar a busca de preços: o cache antigo deixa de valer
 // Códigos que a Travelpayouts usa para empresas do mesmo grupo
 const AIRLINE_ALIAS = { JJ: "LA", "4M": "LA", XL: "LA", LP: "LA", "4C": "LA", PZ: "LA" };
 const IATA = /^[A-Z]{3}$/, DAY = /^\d{4}-\d{2}-\d{2}$/;
@@ -255,12 +256,14 @@ export default {
     if (p.error) return json(p, 400, h);
     // cache compartilhado por 30 min por trecho e datas
     const cache = typeof caches !== "undefined" ? caches.default : null;
-    const key = new Request(`https://cache.radar/${p.mode}?${[...url.searchParams].sort().map(([k, v]) => `${k}=${v}`).join("&")}`);
+    const key = new Request(`https://cache.radar/v${PRICES_VERSION}/${p.mode}?${[...url.searchParams].sort().map(([k, v]) => `${k}=${v}`).join("&")}`);
     if (cache) { const hit = await cache.match(key); if (hit) return new Response(hit.body, { status: 200, headers: { ...Object.fromEntries(hit.headers), ...h } }); }
     try {
       const data = p.mode === "months" ? await months(env, p) : await prices(env, p);
       const res = json(data, 200, h);
-      if (cache && ctx) ctx.waitUntil(cache.put(key, new Response(JSON.stringify(data), { headers: { "Content-Type": "application/json; charset=utf-8", "Cache-Control": `public, max-age=${CACHE_SECONDS}` } })));
+      // sem nenhum preço, guarda por pouco tempo (a fonte pode ganhar dados logo)
+      const empty = !Object.keys(data.airlines || data.months || {}).length;
+      if (cache && ctx) ctx.waitUntil(cache.put(key, new Response(JSON.stringify(data), { headers: { "Content-Type": "application/json; charset=utf-8", "Cache-Control": `public, max-age=${empty ? 300 : CACHE_SECONDS}` } })));
       return res;
     } catch (e) {
       return json({ error: e.code || "error", message: e.message }, 502, h);
