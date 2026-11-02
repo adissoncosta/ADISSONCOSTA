@@ -99,7 +99,18 @@ a.go.site .arrow{font-family:var(--body);font-size:.85rem}
 .deal-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,330px),1fr));gap:12px}
 .deal{background:var(--paper);border:1px solid var(--line);border-radius:12px;overflow:hidden;display:grid;grid-template-columns:clamp(88px,30%,124px) minmax(0,1fr);min-width:0}
 .deal .pic{position:relative;min-height:100%;background:#79B4E3}
-.deal .pic svg{position:absolute;inset:0;width:100%;height:100%;display:block}
+.deal .pic svg,.deal .pic img{position:absolute;inset:0;width:100%;height:100%;display:block}
+.deal .pic img{object-fit:cover}
+.dest{margin:0 0 16px;position:relative;border-radius:12px;overflow:hidden;aspect-ratio:16/7;max-width:100%;background:var(--line)}
+.dest img{width:100%;height:100%;object-fit:cover;display:block}
+.dest figcaption{position:absolute;left:0;right:0;bottom:0;padding:28px 14px 10px;color:#fff;background:linear-gradient(transparent,rgba(10,20,35,.8));display:grid;gap:2px}
+.dest figcaption strong{font-family:var(--display);font-size:1.6rem;line-height:1;text-transform:uppercase;letter-spacing:.02em}
+.dest figcaption span{font-size:.82rem;opacity:.9}
+@media (max-width:520px){.dest{aspect-ratio:4/3}}
+.credits{color:var(--muted);font-size:.78rem}
+.credits summary{cursor:pointer}
+.credits ul{margin:8px 0 0;padding-left:18px;display:grid;gap:2px}
+.credits a{color:inherit}
 .deal .pic .cap{position:absolute;left:0;right:0;bottom:0;padding:18px 7px 7px;font-size:.68rem;font-weight:600;line-height:1.25;color:#fff;background:linear-gradient(transparent,rgba(10,20,35,.78));text-wrap:balance}
 .deal .body{padding:14px 14px 16px;display:grid;gap:8px;align-content:start;min-width:0}
 .deal .route{font-family:var(--mono);font-weight:600;font-size:.82rem;letter-spacing:.04em;color:var(--muted);display:flex;align-items:center;gap:8px}
@@ -276,6 +287,7 @@ footer{color:var(--muted);font-size:.8rem;max-width:68ch}
   </section>
 
   <section class="results" aria-live="polite">
+    <figure class="dest" id="dest" hidden></figure>
     <h2>Comprar direto na companhia</h2>
     <p class="summary" id="summary"></p>
     <p class="sub">Cada botão abre o site oficial da companhia com trecho, datas, passageiros e cabine já preenchidos. É só escolher o voo e pagar.</p>
@@ -345,6 +357,7 @@ footer{color:var(--muted);font-size:.8rem;max-width:68ch}
     </ul>
   </section>
 
+  <details class="credits" id="credits" hidden><summary>Créditos das fotos</summary><ul id="creditList"></ul></details>
   <footer>Os preços aparecem nos sites de cada empresa, que abrem em uma nova aba. Esta página não vende passagens. A última busca e as anotações de preço ficam salvas só neste navegador.</footer>
 </div>
 
@@ -491,6 +504,14 @@ const SCENES = {
 };
 const SCENE_ALIAS = {JFK:"NYC",EWR:"NYC",GIG:"RIO",SDU:"RIO",GRU:"SAO",CGH:"SAO",VCP:"SAO",NRT:"TYO",HND:"TYO",EZE:"BUE",AEP:"BUE",TPA:"MCO",FLL:"MIA",ATL:"SKY",IAH:"SKY",DFW:"SKY"};
 const SCENE_NAME = {SKY:c=>AIRPORTS[c]||c, GEN:c=>AIRPORTS[c] ? AIRPORTS[c].split(" · ")[0] : c};
+// Fotos reais dos pontos turísticos (Wikimedia Commons). Gerado por scripts/fetch_photos.py.
+const PHOTOS = {};
+const photoKey = code => PHOTOS[code] ? code : (PHOTOS[SCENE_ALIAS[code]] ? SCENE_ALIAS[code] : null);
+function photoOf(code){
+  const k = photoKey(code); if(!k) return null;
+  const p = PHOTOS[k];
+  return {src:`img/${k}.jpg`, name:p.n, credit:`${p.a} · ${p.l}`};
+}
 function sceneSVG(code){
   const key = SCENE_ALIAS[code] || (SCENES[code] ? code : "GEN"), sc = SCENES[key];
   const sk = SKY[sc.sky], id = "sky-"+key;
@@ -708,6 +729,12 @@ function render(){
   try{ if(!e) localStorage.setItem("radar-busca", JSON.stringify({...s, ret:$("ret").value, oneWay})); }catch(_){}
   if(e) return;
   const L = links(s);
+  const ph = photoOf(s.to), dest = $("dest");
+  dest.hidden = !ph;
+  if(ph && dest.dataset.src !== ph.src){
+    dest.dataset.src = ph.src;
+    dest.innerHTML = `<img src="${ph.src}" alt="Foto: ${esc(ph.name)}" onerror="this.parentNode.hidden=true"><figcaption><strong>${esc((AIRPORTS[s.to]||s.to).split(" · ")[0])}</strong><span>${esc(ph.name)} · foto: ${esc(ph.credit)}</span></figcaption>`;
+  }
   $("summary").textContent = `${s.from} → ${s.to} · ${fmtBR(s.dep)}${s.ret?" a "+fmtBR(s.ret):" (só ida)"} · ${s.pax} adulto${s.pax>1?"s":""} · ${CABIN_PT[s.cabin]}`;
   $("cash").innerHTML = L.cash.map(card).join("");
   $("miles").innerHTML = L.miles.map(card).join("");
@@ -773,7 +800,7 @@ function renderDeals(){
   if(!list.length){ $("deals").innerHTML = `<p class="sub" style="margin:0">As ofertas desta aba já venceram. Use a busca abaixo para encontrar os preços de hoje.</p>`; return; }
   $("deals").innerHTML = list.map((d,i)=>`
     <article class="deal">
-      ${(sc => `<div class="pic">${sc.svg}<span class="cap">${sc.name}</span></div>`)(sceneSVG(d.fill[1]))}
+      ${((sc, ph) => `<div class="pic">${sc.svg}${ph?`<img src="${ph.src}" alt="Foto: ${esc(ph.name)}" loading="lazy" title="${esc(ph.credit)}" onerror="this.remove()">`:""}<span class="cap">${esc(ph?ph.name:sc.name)}</span></div>`)(sceneSVG(d.fill[1]), photoOf(d.fill[1]))}
       <div class="body">
       <span class="badge">${d.badge}</span>
       <div class="route">${flagOf(d)}${d.route}</div>
@@ -1174,6 +1201,11 @@ $("tStop").onclick = () => { if(tRun){ tRun.stop = true; tMsg("Parando depois do
 let tResize; let tLastW = 0;
 addEventListener("resize", () => { clearTimeout(tResize); tResize = setTimeout(() => { const w=$("tChart").clientWidth; if(Math.abs(w-tLastW)>8){ tLastW=w; const s=tState(); drawTrend(s, tMonths(s), tStore.get(tKey(s)), tDealFor(s)); } }, 150); });
 
+(() => {
+  const ks = Object.keys(PHOTOS).sort((a,b) => PHOTOS[a].n.localeCompare(PHOTOS[b].n, "pt"));
+  $("credits").hidden = !ks.length;
+  $("creditList").innerHTML = ks.map(k => { const p = PHOTOS[k]; return `<li>${esc(p.n)}: ${esc(p.a)}, ${p.u?`<a href="${esc(p.u)}" target="_blank" rel="noopener">${esc(p.l)}</a>`:esc(p.l)}, via Wikimedia Commons</li>`; }).join("");
+})();
 renderDeals(); render(); calc(); renderTrend();
 </script>
 </body>
