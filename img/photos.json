@@ -41,6 +41,12 @@
   "n": "Grand-Place",
   "u": "https://commons.wikimedia.org/wiki/File:Grand-Place,_Brussels_-_panorama,_June_2018.jpg"
  },
+ "BSB": {
+  "a": "Marcelo Jorge Vieira from Brazil",
+  "l": "CC BY-SA 2.0",
+  "n": "Congresso Nacional",
+  "u": "https://commons.wikimedia.org/wiki/File:National_Congress_of_Brazil.jpg"
+ },
  "BUE": {
   "a": "Luis Santos",
   "l": "CC BY-SA 2.0",
@@ -71,6 +77,12 @@
   "n": "Reunion Tower, Dallas",
   "u": "https://commons.wikimedia.org/wiki/File:Reunion_Tower_2026.jpg"
  },
+ "DOH": {
+  "a": "Alex Sergeev (www.asergeev.com)",
+  "l": "CC BY-SA 3.0",
+  "n": "Doha",
+  "u": "https://commons.wikimedia.org/wiki/File:The_Pearl_Marina_in_Nov_2013.jpg"
+ },
  "DXB": {
   "a": "imran shahabuddin",
   "l": "CC BY 2.0",
@@ -94,6 +106,12 @@
   "l": "CC BY 4.0",
   "n": "Space Center Houston",
   "u": "https://commons.wikimedia.org/wiki/File:Space_Center_Houston_2025.08.jpg"
+ },
+ "ICN": {
+  "a": "서울관광 아카이브",
+  "l": "KOGL Type 1",
+  "n": "Namsan e N Seoul Tower",
+  "u": "https://commons.wikimedia.org/wiki/File:Namsan_and_Namsan_Tour_at_Dusk.jpg"
  },
  "IST": {
   "a": "Pedro Szekely from Los Angeles, USA",
@@ -178,6 +196,12 @@
   "l": "CC BY 2.0",
   "n": "Ponte Luís I",
   "u": "https://commons.wikimedia.org/wiki/File:Dom_Lu%C3%ADs_I_Bridge_(36961760686).jpg"
+ },
+ "PTY": {
+  "a": "Mariordo (Mario Roberto Durán Ortiz)",
+  "l": "CC BY-SA 4.0",
+  "n": "Canal do Panamá",
+  "u": "https://commons.wikimedia.org/wiki/File:Agua_Clara_Locks_09_2019_0822.jpg"
  },
  "RIO": {
   "a": "Arne Müseler",
