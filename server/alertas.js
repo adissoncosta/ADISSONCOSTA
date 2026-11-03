@@ -1,6 +1,9 @@
-// Alertas de promoção no WhatsApp (CallMeBot), disparados pelo agendamento do Worker (a cada 10 min).
-// Segredos: WHATSAPP_PHONE (seu número com DDI, ex. +5541999998888) e CALLMEBOT_APIKEY (chave que o
-// CallMeBot manda no WhatsApp). Sem eles, nada é enviado.
+// Alertas de promoção, disparados pelo agendamento do Worker (a cada 10 min). Envia por qualquer canal
+// configurado (segredos do Worker); sem nenhum, nada é enviado:
+//   WhatsApp pela Green API: GREENAPI_INSTANCE, GREENAPI_TOKEN [, GREENAPI_URL] e WHATSAPP_PHONE
+//     (número que recebe, com DDI) ou WHATSAPP_CHAT (id de um grupo, ex. 120363...@g.us)
+//   Telegram: TELEGRAM_TOKEN [, TELEGRAM_CHAT] — sem TELEGRAM_CHAT, usa quem mandou /start para o bot
+//   WhatsApp pelo CallMeBot: WHATSAPP_PHONE e CALLMEBOT_APIKEY
 // Cada promoção é avisada uma vez só: as chaves já avisadas ficam guardadas (Durable Object "Alertas").
 
 export const SITE = "https://adissoncosta.github.io/ADISSONCOSTA/";
@@ -110,20 +113,76 @@ async function usualPrices(fares, lookup) {
   return out;
 }
 
-export async function sendWhatsApp(env, text, fetchImpl = fetch) {
+const clean = (r, body) => `${r.status}: ${String(body).replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").slice(0, 160)}`;
+export const channels = env => [
+  env.GREENAPI_INSTANCE && env.GREENAPI_TOKEN && (env.WHATSAPP_CHAT || env.WHATSAPP_PHONE) && "greenapi",
+  env.TELEGRAM_TOKEN && "telegram",
+  env.CALLMEBOT_APIKEY && env.WHATSAPP_PHONE && "callmebot",
+].filter(Boolean);
+
+// WhatsApp pela Green API (WhatsApp conectado por QR code no painel da Green API)
+async function sendGreen(env, text, fetchImpl) {
+  const chatId = env.WHATSAPP_CHAT || `${String(env.WHATSAPP_PHONE).replace(/\D/g, "")}@c.us`;
+  const base = (env.GREENAPI_URL || "https://api.green-api.com").replace(/\/+$/, "");
+  const r = await fetchImpl(`${base}/waInstance${env.GREENAPI_INSTANCE}/sendMessage/${env.GREENAPI_TOKEN}`, {
+    method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ chatId, message: text }) });
+  const body = await r.text().catch(() => "");
+  if (!r.ok || !/idMessage/.test(body)) throw new Error(`Green API respondeu ${clean(r, body)}`);
+}
+// Telegram: negrito do WhatsApp (*texto*) vira <b>texto</b>
+const tgHtml = t => t.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/\*([^*\n]+)\*/g, "<b>$1</b>");
+async function telegramChat(env, store, fetchImpl) {
+  if (env.TELEGRAM_CHAT) return env.TELEGRAM_CHAT;
+  const saved = store && store.chat;
+  if (saved) return saved;
+  // ainda sem chat: procura quem mandou mensagem (/start) para o bot
+  const r = await fetchImpl(`https://api.telegram.org/bot${env.TELEGRAM_TOKEN}/getUpdates`);
+  const j = await r.json().catch(() => ({}));
+  const m = (j.result || []).map(u => u.message || u.channel_post || u.my_chat_member).filter(Boolean).pop();
+  if (!m || !m.chat) throw new Error("Telegram: mande /start para o seu bot para ativar os alertas");
+  if (store) store.chat = String(m.chat.id);
+  return String(m.chat.id);
+}
+async function sendTelegram(env, text, fetchImpl, tg) {
+  const chat_id = await telegramChat(env, tg, fetchImpl);
+  const r = await fetchImpl(`https://api.telegram.org/bot${env.TELEGRAM_TOKEN}/sendMessage`, {
+    method: "POST", headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ chat_id, text: tgHtml(text), parse_mode: "HTML", disable_web_page_preview: true }) });
+  const body = await r.text().catch(() => "");
+  if (!r.ok || !/"ok":true/.test(body)) throw new Error(`Telegram respondeu ${clean(r, body)}`);
+}
+async function sendCallMeBot(env, text, fetchImpl) {
   const q = new URLSearchParams({ phone: env.WHATSAPP_PHONE, text, apikey: env.CALLMEBOT_APIKEY });
   const r = await fetchImpl(`https://api.callmebot.com/whatsapp.php?${q}`);
   const body = await r.text().catch(() => "");
-  if (!r.ok || /error|invalid|not allowed/i.test(body.slice(0, 400)) && !/queued|sent/i.test(body)) throw new Error(`CallMeBot respondeu ${r.status}: ${body.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").slice(0, 160)}`);
-  return true;
+  if (!r.ok || /error|invalid|not allowed|is full/i.test(body.slice(0, 400)) && !/queued|sent/i.test(body)) throw new Error(`CallMeBot respondeu ${clean(r, body)}`);
+}
+// Envia por todos os canais configurados; vale como enviado se ao menos um deu certo
+export async function sendAlert(env, text, fetchImpl = fetch, tg = null) {
+  const errs = [];
+  let ok = 0;
+  for (const c of channels(env)) {
+    try {
+      if (c === "greenapi") await sendGreen(env, text, fetchImpl);
+      else if (c === "telegram") await sendTelegram(env, text, fetchImpl, tg);
+      else await sendCallMeBot(env, text, fetchImpl);
+      ok++;
+    } catch (e) { errs.push(e.message); }
+  }
+  if (!ok) throw new Error(errs.join(" | ") || "nenhum canal configurado");
+  return errs;
 }
 
 // Uma rodada: lê as promoções, avisa as novas, guarda o que foi avisado.
 // store: {get(): Promise<{[key]: timestamp}>, put(obj)}; deps: {offers, lookup, fetchImpl}
 export async function runAlerts(env, store, deps, now = new Date()) {
-  if (!env.WHATSAPP_PHONE || !env.CALLMEBOT_APIKEY) return { sent: 0, skipped: "sem WHATSAPP_PHONE/CALLMEBOT_APIKEY" };
+  if (!channels(env).length) return { sent: 0, skipped: "nenhum canal configurado" };
   const data = await deps.offers();
   const seen = (await store.get()) || {};
+  // chat do Telegram descoberto pelo /start fica guardado junto (chave "_tg")
+  const tg = { chat: seen._tg || "" };
+  delete seen._tg;
+  const save = () => store.put(tg.chat ? { ...seen, _tg: tg.chat } : seen);
   const first = !Object.keys(seen).length;
   const t = now.getTime();
   for (const k of Object.keys(seen)) if (t - seen[k] > KEEP_DAYS * 864e5) delete seen[k];
@@ -135,8 +194,8 @@ export async function runAlerts(env, store, deps, now = new Date()) {
     const live = fresh.find(a => a.campaign);
     const text = [`✅ *Alertas do Radar de Passagens ativados!*`, "", "Você vai receber aqui as novas promoções de passagens assim que forem encontradas.",
       `Agora há ${fresh.length} ${fresh.length === 1 ? "promoção" : "promoções"} no ar${live ? `, incluindo *${live.campaign.name}* (ao vivo)` : ""}.`, "", `📲 ${SITE}`].join("\n");
-    try { await sendWhatsApp(env, text, deps.fetchImpl); sent++; } catch (e) { errors.push(e.message); }
-    if (!sent) return { sent, errors };
+    try { errors.push(...await sendAlert(env, text, deps.fetchImpl, tg)); sent++; } catch (e) { errors.push(e.message); }
+    if (!sent) { await save(); return { sent, errors }; }
     for (const a of fresh) if (a !== live) seen[a.key] = t;
     // a campanha ao vivo vai em seguida, porque é por tempo limitado
     if (live) fresh.splice(0, fresh.length, live); else fresh.length = 0;
@@ -144,11 +203,11 @@ export async function runAlerts(env, store, deps, now = new Date()) {
   for (const a of fresh.slice(0, MAX_PER_RUN)) {
     try {
       const text = a.campaign ? campaignMessage(a.campaign, deps.lookup ? await usualPrices(a.campaign.fares || [], deps.lookup) : {}) : dealMessage(a.deal);
-      await sendWhatsApp(env, text, deps.fetchImpl);
+      errors.push(...await sendAlert(env, text, deps.fetchImpl, tg));
       seen[a.key] = t; sent++;
     } catch (e) { errors.push(e.message); break; }
   }
-  await store.put(seen);
+  await save();
   return { sent, pending: Math.max(0, fresh.length - sent), errors };
 }
 

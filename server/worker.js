@@ -9,7 +9,7 @@
 // Configuração: variável secreta TRAVELPAYOUTS_TOKEN. Opcional: ALLOWED_ORIGINS (lista separada
 // por vírgula; padrão "*").
 
-import { runAlerts, doStore, Alertas } from "./alertas.js";
+import { runAlerts, doStore, channels, Alertas } from "./alertas.js";
 export { Alertas };
 
 const API = "https://api.travelpayouts.com/aviasales/v3/prices_for_dates";
@@ -278,7 +278,7 @@ const usualLookup = env => async f => {
 export default {
   // agendamento (wrangler.toml, [triggers]): avisa no WhatsApp as promoções novas
   async scheduled(event, env, ctx) {
-    if (!env.WHATSAPP_PHONE || !env.CALLMEBOT_APIKEY || !env.ALERTAS) return;
+    if (!channels(env).length || !env.ALERTAS) return;
     ctx.waitUntil(runAlerts(env, doStore(env.ALERTAS), { offers: () => offers(env), lookup: env.TRAVELPAYOUTS_TOKEN ? usualLookup(env) : null })
       .then(r => console.log("alertas", JSON.stringify(r))).catch(e => console.log("alertas erro", e.message)));
   },

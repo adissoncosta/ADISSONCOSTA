@@ -146,6 +146,32 @@ const failSend = async () => ({ ok: true, status: 200, text: async () => "APIKey
 saved = {}; ra = await A.runAlerts(envA, store, { ...deps, fetchImpl: failSend }, new Date("2026-11-02T22:00:00Z"));
 assert(ra.sent === 0 && /APIKey is invalid/.test(ra.errors[0]) && !Object.keys(saved).length, "send failure reported, nothing marked as sent");
 assert((await A.runAlerts({}, store, deps)).sent === 0, "no secrets: nothing sent");
+// WhatsApp pela Green API
+const calls2 = [];
+const green = async (u, o) => { calls2.push({ u, body: o && o.body && JSON.parse(o.body) }); return { ok: true, status: 200, text: async () => '{"idMessage":"3EB0"}' }; };
+await A.sendAlert({ GREENAPI_INSTANCE: "7103000001", GREENAPI_TOKEN: "tok", WHATSAPP_PHONE: "+55 (41) 99999-0000" }, "*Oi*", green);
+assert(calls2[0].u === "https://api.green-api.com/waInstance7103000001/sendMessage/tok" && calls2[0].body.chatId === "5541999990000@c.us" && calls2[0].body.message === "*Oi*", "Green API: sends to the phone chat: " + JSON.stringify(calls2[0]));
+await A.sendAlert({ GREENAPI_INSTANCE: "1", GREENAPI_TOKEN: "t", GREENAPI_URL: "https://7103.api.greenapi.com/", WHATSAPP_CHAT: "120363000@g.us" }, "x", green);
+assert(calls2[1].u === "https://7103.api.greenapi.com/waInstance1/sendMessage/t" && calls2[1].body.chatId === "120363000@g.us", "Green API: custom host and group chat");
+let gErr = ""; try { await A.sendAlert({ GREENAPI_INSTANCE: "1", GREENAPI_TOKEN: "t", WHATSAPP_PHONE: "1" }, "x", async () => ({ ok: false, status: 401, text: async () => "Unauthorized" })); } catch (e) { gErr = e.message; }
+assert(/Green API respondeu 401/.test(gErr), "Green API error reported: " + gErr);
+// Telegram: descobre o chat pelo /start e guarda; negrito em HTML
+const tgCalls = [];
+const tgf = async (u, o) => { tgCalls.push({ u, body: o && o.body && JSON.parse(o.body) });
+  if (u.endsWith("/getUpdates")) return { ok: true, status: 200, json: async () => ({ ok: true, result: [{ message: { text: "/start", chat: { id: 987654, type: "private" } } }] }) };
+  return { ok: true, status: 200, text: async () => '{"ok":true,"result":{}}' }; };
+saved = {}; sentMsgs.length = 0;
+const envT = { TELEGRAM_TOKEN: "123:abc" };
+ra = await A.runAlerts(envT, store, { ...deps, fetchImpl: tgf }, new Date("2026-11-02T22:00:00Z"));
+const tgSend = tgCalls.filter(c => c.u.endsWith("/sendMessage"));
+assert(ra.sent === 2 && tgSend.length === 2 && tgSend[0].body.chat_id === "987654" && tgSend[0].body.parse_mode === "HTML" && /<b>Alertas do Radar de Passagens ativados!<\/b>/.test(tgSend[0].body.text) && saved._tg === "987654", "Telegram: chat found by /start, saved, bold as HTML: " + JSON.stringify(ra));
+const nUpd = tgCalls.filter(c => c.u.endsWith("/getUpdates")).length;
+data.cash.push({ source: "md", url: "https://md/tg", title: "Nova", to: "REC", price: 450, roundTrip: true });
+ra = await A.runAlerts(envT, store, { ...deps, fetchImpl: tgf }, new Date("2026-11-02T22:30:00Z"));
+assert(ra.sent === 1 && tgCalls.filter(c => c.u.endsWith("/getUpdates")).length === nUpd && saved._tg === "987654" && !A.pendingAlerts(data).some(a => a.key === "_tg"), "Telegram: saved chat reused, not treated as an alert");
+let tErr = ""; try { await A.sendAlert({ TELEGRAM_TOKEN: "x" }, "y", async () => ({ ok: true, status: 200, json: async () => ({ ok: true, result: [] }) })); } catch (e) { tErr = e.message; }
+assert(/mande \/start/.test(tErr), "Telegram without /start explains what to do");
+assert(/is full/.test(await A.sendAlert({ WHATSAPP_PHONE: "1", CALLMEBOT_APIKEY: "k", TELEGRAM_TOKEN: "123:abc", TELEGRAM_CHAT: "5" }, "z", async u => u.includes("callmebot") ? { ok: true, status: 200, text: async () => "This Bot is full" } : { ok: true, status: 200, text: async () => '{"ok":true}' }).then(e => e.join()).catch(e => "throw " + e.message)), "one channel failing does not block the others");
 const offM = await offers(env, async u => ({ ok: true, status: 200, text: async () => u.includes("milhas/feed")
   ? '<rss><item><title>Jalapão! Voos diretos da Latam para Palmas a partir de 11 mil milhas o trecho</title><link>https://md/palmas</link><pubDate></pubDate><description></description></item></rss>'
   : u.includes("feed") ? "<rss></rss>" : "<html></html>", json: async () => ({ success: true, data: [] }) }));

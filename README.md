@@ -38,18 +38,29 @@ Os preços vêm de buscas recentes feitas por viajantes: podem estar algumas hor
 
 O servidor só aceita chamadas do site (`ALLOWED_ORIGINS` em `server/wrangler.toml`).
 
-## Alertas no WhatsApp
+## Alertas de promoção (WhatsApp ou Telegram)
 
-A cada 10 minutos o servidor confere as promoções (campanhas da Azul ao vivo e as novas promoções em reais e em milhas do Melhores Destinos) e manda cada novidade uma vez só para o seu WhatsApp, pelo [CallMeBot](https://www.callmebot.com/blog/free-api-whatsapp-messages/) (gratuito, só para o seu próprio número).
+A cada 10 minutos o servidor confere as promoções (campanhas da Azul ao vivo e as novas promoções em reais e em milhas do Melhores Destinos) e manda cada novidade uma vez só. Funciona com qualquer um dos canais abaixo (ou com os dois). Os segredos ficam no GitHub, em Settings → Secrets and variables → Actions → New repository secret; depois rode Actions → Servidor de preços → Run workflow. Em até 10 minutos chega a mensagem "Alertas do Radar de Passagens ativados!".
 
-1. Salve nos contatos o número do CallMeBot indicado na página acima e mande para ele, pelo WhatsApp, a mensagem `I allow callmebot to send me messages`.
-2. Ele responde com a sua chave (apikey).
-3. No GitHub, em Settings → Secrets and variables → Actions → New repository secret, crie:
-   - `WHATSAPP_PHONE`: seu número com DDI e DDD, ex. `+5541999998888`
-   - `CALLMEBOT_APIKEY`: a chave recebida
-4. Rode de novo o workflow "Servidor de preços" (Actions → Servidor de preços → Run workflow).
+### WhatsApp pela Green API (plano Developer, gratuito)
 
-Em até 10 minutos chega a mensagem "Alertas do Radar de Passagens ativados!". O código está em `server/alertas.js`.
+O WhatsApp que envia é conectado por QR code, como no WhatsApp Web. Use um número diferente do que vai receber (um segundo chip ou WhatsApp Business): mensagens que você manda para você mesmo não tocam notificação. O plano gratuito conversa com até 3 chats.
+
+1. Crie a conta em https://console.green-api.com, crie uma instância "Developer" e escaneie o QR code com o WhatsApp do número que vai enviar.
+2. Copie da instância o `idInstance`, o `apiTokenInstance` e o `apiUrl`.
+3. Crie os segredos:
+   - `GREENAPI_INSTANCE`: o idInstance
+   - `GREENAPI_TOKEN`: o apiTokenInstance
+   - `GREENAPI_URL`: o apiUrl (ex. `https://7103.api.greenapi.com`)
+   - `WHATSAPP_PHONE`: o número que recebe, com DDI e DDD (ex. `+5541999998888`), ou `WHATSAPP_CHAT` com o id de um grupo (ex. `120363...@g.us`) para mandar num grupo, como os canais de promoção.
+
+### Telegram (gratuito e oficial)
+
+1. No Telegram, fale com o @BotFather, mande `/newbot` e siga os passos; ele devolve um token.
+2. Abra o seu bot e mande `/start`.
+3. Crie o segredo `TELEGRAM_TOKEN` com o token. O servidor descobre o chat sozinho pelo `/start`. Para mandar num canal, coloque o bot como administrador e crie `TELEGRAM_CHAT` com `@nome_do_canal`.
+
+O código está em `server/alertas.js`.
 
 ## Testar
 
