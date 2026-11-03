@@ -181,8 +181,10 @@ export async function runAlerts(env, store, deps, now = new Date()) {
   const seen = (await store.get()) || {};
   // chat do Telegram descoberto pelo /start fica guardado junto (chave "_tg")
   const tg = { chat: seen._tg || "" };
-  delete seen._tg;
-  const save = () => store.put(tg.chat ? { ...seen, _tg: tg.chat } : seen);
+  delete seen._tg; delete seen._last;
+  // guarda também o resultado da rodada (aparece em ?alertas=status, sem segredos)
+  const save = r => store.put({ ...seen, ...(tg.chat ? { _tg: tg.chat } : {}),
+    _last: { at: now.toISOString(), channels: channels(env), telegramChat: !!(env.TELEGRAM_CHAT || tg.chat), ...r } });
   const first = !Object.keys(seen).length;
   const t = now.getTime();
   for (const k of Object.keys(seen)) if (t - seen[k] > KEEP_DAYS * 864e5) delete seen[k];
@@ -195,7 +197,7 @@ export async function runAlerts(env, store, deps, now = new Date()) {
     const text = [`✅ *Alertas do Radar de Passagens ativados!*`, "", "Você vai receber aqui as novas promoções de passagens assim que forem encontradas.",
       `Agora há ${fresh.length} ${fresh.length === 1 ? "promoção" : "promoções"} no ar${live ? `, incluindo *${live.campaign.name}* (ao vivo)` : ""}.`, "", `📲 ${SITE}`].join("\n");
     try { errors.push(...await sendAlert(env, text, deps.fetchImpl, tg)); sent++; } catch (e) { errors.push(e.message); }
-    if (!sent) { await save(); return { sent, errors }; }
+    if (!sent) { await save({ sent, errors }); return { sent, errors }; }
     for (const a of fresh) if (a !== live) seen[a.key] = t;
     // a campanha ao vivo vai em seguida, porque é por tempo limitado
     if (live) fresh.splice(0, fresh.length, live); else fresh.length = 0;
@@ -207,8 +209,9 @@ export async function runAlerts(env, store, deps, now = new Date()) {
       seen[a.key] = t; sent++;
     } catch (e) { errors.push(e.message); break; }
   }
-  await save();
-  return { sent, pending: Math.max(0, fresh.length - sent), errors };
+  const res = { sent, pending: Math.max(0, fresh.length - sent), errors };
+  await save(res);
+  return res;
 }
 
 // Durable Object que guarda as chaves já avisadas (armazenamento SQLite do plano gratuito)

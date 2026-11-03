@@ -134,7 +134,7 @@ const store = { get: async () => ({ ...saved }), put: async o => { saved = { ...
 const envA = { WHATSAPP_PHONE: "+5541999990000", CALLMEBOT_APIKEY: "123456" };
 const deps = { offers: async () => data, lookup: async () => 480, fetchImpl: cmb };
 let ra = await A.runAlerts(envA, store, deps, new Date("2026-11-02T22:00:00Z"));
-assert(ra.sent === 2 && /Alertas do Radar de Passagens ativados/.test(sentMsgs[0]) && /3 promoções/.test(sentMsgs[0]) && /ANOITECEU AZUL/.test(sentMsgs[1]) && Object.keys(saved).length === 3, "first run: confirmation + live campaign, existing deals marked as seen: " + JSON.stringify(ra));
+assert(ra.sent === 2 && /Alertas do Radar de Passagens ativados/.test(sentMsgs[0]) && /3 promoções/.test(sentMsgs[0]) && /ANOITECEU AZUL/.test(sentMsgs[1]) && Object.keys(saved).filter(k => !k.startsWith("_")).length === 3, "first run: confirmation + live campaign, existing deals marked as seen: " + JSON.stringify(ra));
 ra = await A.runAlerts(envA, store, deps, new Date("2026-11-02T22:10:00Z"));
 assert(ra.sent === 0 && sentMsgs.length === 2, "nothing repeated on the next run");
 data.cash.push({ source: "md", url: "https://md/new", title: "Novidade", to: "SSA", from: "GRU", price: 399, roundTrip: true, airline: "G3" });
@@ -144,7 +144,7 @@ ra = await A.runAlerts(envA, store, deps, new Date("2026-11-03T22:00:00Z"));
 assert(ra.sent === 1 && /ANOITECEU AZUL/.test(sentMsgs[3]), "campaign alerted again the next night");
 const failSend = async () => ({ ok: true, status: 200, text: async () => "APIKey is invalid" });
 saved = {}; ra = await A.runAlerts(envA, store, { ...deps, fetchImpl: failSend }, new Date("2026-11-02T22:00:00Z"));
-assert(ra.sent === 0 && /APIKey is invalid/.test(ra.errors[0]) && !Object.keys(saved).length, "send failure reported, nothing marked as sent");
+assert(ra.sent === 0 && /APIKey is invalid/.test(ra.errors[0]) && !Object.keys(saved).filter(k => !k.startsWith("_")).length, "send failure reported, nothing marked as sent");
 assert((await A.runAlerts({}, store, deps)).sent === 0, "no secrets: nothing sent");
 // WhatsApp pela Green API
 const calls2 = [];
@@ -168,6 +168,7 @@ assert(ra.sent === 2 && tgSend.length === 2 && tgSend[0].body.chat_id === "98765
 const nUpd = tgCalls.filter(c => c.u.endsWith("/getUpdates")).length;
 data.cash.push({ source: "md", url: "https://md/tg", title: "Nova", to: "REC", price: 450, roundTrip: true });
 ra = await A.runAlerts(envT, store, { ...deps, fetchImpl: tgf }, new Date("2026-11-02T22:30:00Z"));
+assert(saved._last && saved._last.sent === 1 && saved._last.channels.join() === "telegram" && saved._last.telegramChat === true && !JSON.stringify(saved._last).includes("123:abc"), "last run saved for the status page, without the token: " + JSON.stringify(saved._last));
 assert(ra.sent === 1 && tgCalls.filter(c => c.u.endsWith("/getUpdates")).length === nUpd && saved._tg === "987654" && !A.pendingAlerts(data).some(a => a.key === "_tg"), "Telegram: saved chat reused, not treated as an alert");
 let tErr = ""; try { await A.sendAlert({ TELEGRAM_TOKEN: "x" }, "y", async () => ({ ok: true, status: 200, json: async () => ({ ok: true, result: [] }) })); } catch (e) { tErr = e.message; }
 assert(/mande \/start/.test(tErr), "Telegram without /start explains what to do");

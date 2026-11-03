@@ -288,6 +288,12 @@ export default {
     if (req.method !== "GET") return json({ error: "method" }, 405, h);
     if (!env.TRAVELPAYOUTS_TOKEN) return json({ error: "no_token", message: "Configure a variável secreta TRAVELPAYOUTS_TOKEN no Worker." }, 500, h);
     const url = new URL(req.url);
+    if (url.searchParams.get("alertas") === "status") {
+      // resultado da última verificação dos alertas (sem tokens nem números)
+      const st = env.ALERTAS ? await doStore(env.ALERTAS).get().catch(() => ({})) : {};
+      const known = Object.keys(st).filter(k => !k.startsWith("_")).length;
+      return json({ channels: channels(env), last: st._last || null, alerted: known }, 200, { ...h, "Cache-Control": "no-store" });
+    }
     if (url.searchParams.has("ofertas")) {
       const cache = typeof caches !== "undefined" ? caches.default : null;
       const key = new Request(`https://cache.radar/ofertas-v${OFFERS_VERSION}`);  // nova versão = cache novo
