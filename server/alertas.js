@@ -70,7 +70,7 @@ export function dealMessage(d) {
   const nat = (!d.from || BR.has(d.from)) && BR.has(d.to);
   const cia = d.airline && CIA[d.airline];
   const lines = [`🔥 *${d.miles ? "EMISSÃO" : "PROMOÇÃO"} ${nat ? "NACIONAL" : "INTERNACIONAL"}* 🔥`, "",
-    `*${d.from ? `${up(city(d.from))} ✈️ ` : "✈️ "}${up(city(d.to))}*`];
+    `*${d.from ? `${up(city(d.from))} ✈️ ` : "✈️ PARA "}${up(city(d.to))}*`];
   if (cia) lines.push(`Cia: *${up(cia)}*`);
   lines.push("", d.miles
     ? `⭕ A partir de *${milhas(d.miles)}*${d.airline && PROGRAM[d.airline] ? ` ${PROGRAM[d.airline]}` : ""} o trecho + taxas`
