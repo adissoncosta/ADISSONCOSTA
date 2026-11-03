@@ -93,3 +93,23 @@ export function telefone(v) {
   if (n.length === 10 || n.length === 11) n = "55" + n;
   return /^55\d{10,11}$/.test(n) ? n : null;
 }
+
+const RE_FONE = /(?:\+?55[\s-]*)?\(?\d{2}\)?[\s-]*\d{4,5}[\s-]?\d{4}/;
+
+// "41 99999-8888 12.345.678/0001-95 [Nome]" → { telefone, doc, nome } ou null
+// (o CPF/CNPJ é procurado do fim para o começo, porque um celular sem pontuação pode parecer um CPF)
+export function lerCadastro(texto) {
+  const t = String(texto ?? "");
+  const candidatos = [...t.matchAll(/[\d./-]{11,18}/g)].reverse();
+  for (const m of candidatos) {
+    const doc = documento(m[0]);
+    if (!doc) continue;
+    const resto = t.slice(0, m.index) + " " + t.slice(m.index + m[0].length);
+    const f = resto.match(RE_FONE);
+    const tel = f && telefone(f[0]);
+    if (!tel) continue;
+    const nome = resto.replace(f[0], " ").replace(/\b(?:cpf|cnpj|whats(?:app)?|telefone|nome)\b:?/gi, " ").replace(/[,;]/g, " ").replace(/\s+/g, " ").trim();
+    return { telefone: tel, doc, nome: nome.length >= 3 ? nome : null };
+  }
+  return null;
+}

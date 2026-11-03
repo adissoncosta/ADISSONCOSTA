@@ -1,5 +1,5 @@
 // Testes do Emissor de NFS-e pelo WhatsApp (nfse/), com WhatsApp, Focus NFe e Receita simulados.
-import { cpfValido, cnpjValido, valor, lerPedido, telefone, agoraBrasilia } from "../nfse/documentos.js";
+import { cpfValido, cnpjValido, valor, lerPedido, lerCadastro, telefone, agoraBrasilia } from "../nfse/documentos.js";
 import { montarDps } from "../nfse/focus.js";
 import { lerWebhook } from "../nfse/whatsapp.js";
 import { receberMensagem, finalizar, verificarPendentes } from "../nfse/emissor.js";
@@ -63,8 +63,8 @@ function cenario({ emitir, consultar } = {}) {
     buscarCnpj: async cnpj => cnpj === "11444777000161" ? { nome: "Cliente Grande SA", email: "fin@cliente.com", codigo_municipio: 3550308, telefone: "5511988887777" } : null,
     agora: () => (t += 1000),
   };
-  const fala = texto => receberMensagem(ctx, lerWebhook(wh(texto)));
-  const ultima = () => enviados.at(-1)?.msg || "";
+  const fala = (texto, de = "5541999990000") => receberMensagem(ctx, lerWebhook(wh(texto, undefined, de + "@c.us")));
+  const ultima = (para = "5541999990000") => enviados.filter(e => e.tel === para).at(-1)?.msg || "";
   return { ctx, dados, enviados, chamadas, fala, ultima };
 }
 
@@ -165,6 +165,85 @@ await s.fala("oi");
 assert(/emissor de notas/.test(s.ultima()) && /Ana/.test(s.ultima()), "greeting shows help");
 await s.fala("nota"); await s.fala("sair");
 assert(/descartado/.test(s.ultima()) && !(await s.ctx.store.get("conversa:5541999990000")), "sair discards the order");
+
+// ---- cliente final pede a própria nota ----
+let lc = lerCadastro("41 98888-7777 11.444.777/0001-61");
+assert(lc?.telefone === "5541988887777" && lc.doc.numero === "11444777000161" && lc.nome === null, "reads client registration: " + JSON.stringify(lc));
+lc = lerCadastro("41988887777 52998224725 João da Silva");
+assert(lc?.telefone === "5541988887777" && lc.doc.numero === "52998224725" && lc.nome === "João da Silva", "registration with unformatted phone/CPF and name: " + JSON.stringify(lc));
+assert(lerCadastro("41 98888-7777") === null, "registration without document is rejected");
+
+const CLI = "5511977776666", DONO = "5541999990000";
+s = cenario();
+await s.fala("oi", CLI);
+assert(s.enviados.length === 0, "unregistered client is ignored");
+await s.fala("cadastrar cliente 11 97777-6666 52998224725");
+assert(/inclua o nome|nome no fim/.test(s.ultima()), "CPF client without name: asks for the name");
+await s.fala("cadastrar cliente 11 97777-6666 11.444.777/0001-61");
+assert(/Cliente cadastrado/.test(s.ultima()) && /Cliente Grande SA/.test(s.ultima()), "owner registers client with Receita data: " + s.ultima());
+assert(/liberou este WhatsApp/.test(s.ultima(CLI)), "client gets a welcome message");
+await s.fala("clientes");
+assert(/Cliente Grande SA/.test(s.ultima()) && /\(11\) 97777-6666/.test(s.ultima()), "owner lists clients");
+
+await s.fala("oi", CLI);
+assert(/Cliente Grande SA/.test(s.ultima(CLI)) && /11\.444\.777\/0001-61/.test(s.ultima(CLI)) && !/cadastrar cliente/.test(s.ultima(CLI)), "client help shows their own CNPJ and no owner commands");
+await s.fala("nota 500 para 529.982.247-25 consultoria", CLI);
+assert(/só pode pedir notas para o seu CNPJ/.test(s.ultima(CLI)) && s.chamadas.length === 0, "client cannot issue for another document");
+await s.fala("cadastrar cliente 11 95555-4444 52998224725 Fulano", CLI);
+await s.fala("cancelar nota 1", CLI);
+assert(/fale com/.test(s.ultima(CLI)) && !(await s.ctx.store.get("cliente:5511955554444")), "client cannot register others nor cancel");
+
+await s.fala("nota 1.200 consultoria de outubro", CLI);
+assert(/Confira a nota/.test(s.ultima(CLI)) && /Cliente Grande SA/.test(s.ultima(CLI)) && /R\$\s?1\.200,00/.test(s.ultima(CLI)), "client order goes to summary: " + s.ultima(CLI));
+await s.fala("11.444.777/0001-61", CLI);
+await s.fala("whatsapp 41 91111-2222", CLI);
+assert(/Responda \*SIM\*/.test(s.ultima(CLI)), "client cannot change tomador or recipient at confirmation");
+await s.fala("sim", CLI);
+const pc = s.chamadas.at(-1);
+assert(pc.d.cnpj_tomador === "11444777000161" && pc.d.valor_servico === 1200 && pc.d.descricao_servico === "Consultoria de outubro", "client order issued with their CNPJ as tomador");
+assert(/pediu uma nota/.test(s.ultima(DONO)), "owner is told about the client's order");
+s.enviados.length = 0;
+await finalizar(s.ctx, pc.ref, { ref: pc.ref, status: "autorizado", numero: "77", url_danfse: "https://s3/77.pdf" });
+const pdf77 = s.enviados.filter(e => e.url === "https://s3/77.pdf").map(e => e.tel);
+assert(pdf77.length === 2 && pdf77[0] === CLI && pdf77[1] === DONO, "PDF goes to the client automatically, copy to owner: " + JSON.stringify(pdf77));
+await s.fala("notas", CLI);
+assert(/nº 77/.test(s.ultima(CLI)), "client lists their notes");
+
+// limite por nota
+await s.fala("limite 11 97777-6666 1.000");
+assert(/até R\$\s?1\.000,00/.test(s.ultima()), "owner sets a limit");
+await s.fala("nota 5.000 projeto grande", CLI);
+assert(/valor máximo/.test(s.ultima(CLI)), "value over the limit is refused");
+await s.fala("900", CLI);
+assert(/Confira a nota/.test(s.ultima(CLI)) && /R\$\s?900,00/.test(s.ultima(CLI)), "value within limit accepted");
+await s.fala("valor 3000", CLI);
+assert(/valor máximo/.test(s.ultima(CLI)), "limit also applies to corrections");
+await s.fala("sair", CLI);
+
+// owner's own note for this CNPJ goes to the registered client's WhatsApp
+await s.fala("nota 300 para 11.444.777/0001-61 ajuste");
+assert(/Enviar ao cliente: \(11\) 97777-6666/.test(s.ultima()), "owner's note for a registered client is sent to that client's WhatsApp");
+await s.fala("não");
+
+// um único WhatsApp por CNPJ: novo cadastro tira o acesso do anterior
+await s.fala("cadastrar cliente 11 95555-4444 11.444.777/0001-61");
+assert(/não pode mais pedir/.test(s.ultima()), "re-registering the CNPJ unlinks the previous number");
+const antes2 = s.enviados.length;
+await s.fala("nota 100 teste", CLI);
+assert(s.enviados.length === antes2, "previous number is now ignored");
+await s.fala("nota 100 teste de serviço", "5511955554444");
+assert(/Confira a nota/.test(s.ultima("5511955554444")), "new number can order");
+await s.fala("remover cliente 11 95555-4444");
+assert(/Cliente removido/.test(s.ultima()) && !(await s.ctx.store.get("cliente:5511955554444")), "owner removes client");
+await s.fala("cadastrar cliente 41 99999-0000 11.444.777/0001-61");
+assert(/administra/.test(s.ultima()), "owner's own number cannot be a client");
+
+// recusa avisa cliente e dono
+s = cenario({ consultar: () => ({ status: "erro_autorizacao", erros: [{ mensagem: "Código inválido" }] }) });
+await s.fala("cadastrar cliente 11 97777-6666 11.444.777/0001-61");
+await s.fala("nota 100 teste de serviço", CLI); await s.fala("sim", CLI);
+await verificarPendentes(s.ctx);
+assert(/recusada/.test(s.ultima(CLI)) && /Já avisei/.test(s.ultima(CLI)) && /recusada/.test(s.ultima(DONO)), "rejection reaches client and owner");
 
 console.log(failed ? `\n${failed} falha(s)` : "\nTodos os testes passaram");
 process.exit(failed ? 1 : 0);
