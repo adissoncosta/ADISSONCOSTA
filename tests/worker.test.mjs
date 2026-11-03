@@ -106,4 +106,48 @@ const res4 = await worker.fetch(new Request("https://w/?from=CWB&to=GIG&dep=2027
 const b4 = await res4.json();
 assert(res4.status === 200 && b4.airlines.LA.price === 333 && b4.scope === "date", "GET returns prices per airline");
 globalThis.fetch = realFetch;
+
+// ---------------- alertas no WhatsApp ----------------
+const A = await import("../server/alertas.js");
+const mi = parseMdItem({ title: "Jalapão! Voos diretos da Latam para Palmas a partir de 11 mil milhas o trecho", link: "https://md/palmas", pub: "" });
+assert(mi && mi.miles === 11000 && mi.to === "PMW" && mi.airline === "LA" && mi.price === 0, "miles deal parsed from the feed: " + JSON.stringify(mi));
+assert(parseMdItem({ title: "Bom demais! Peça o cartão Latam Pass Itaú e ganhe até 80 mil milhas bônus", link: "x" }) === null, "card bonus posts are not flight deals");
+const mx = parseMdItem({ title: "Voos do Recife para Fernando de Noronha a partir de R$ 125 ou 9 mil pontos Azul o trecho mais taxas", link: "y" });
+assert(mx && mx.price === 125 && mx.miles === 9000 && mx.to === "FEN" && mx.airline === "AD", "cash + miles deal: " + JSON.stringify(mx));
+const camp = { name: "Anoiteceu Azul", url: "https://passagens.voeazul.com.br/pt/anoiteceu", price: "R$ 219,90", points: "8.000 pontos", cond: "Consulte condições.", when: "É só essa noite, das 18h às 23h59!",
+  fares: Array.from({ length: 8 }, (_, i) => ({ from: "GRU", to: ["GIG", "CWB", "POA", "FLN", "REC", "SSA", "BSB", "FOR"][i], fromName: "São Paulo", price: 214.53 + i * 10, dep: "2027-03-04", ret: "", oneWay: true })) };
+const msg = A.campaignMessage(camp, { "GRU-GIG": { price: 480, month: "mar/27" } });
+assert(/PROMOÇÃO AO VIVO/.test(msg) && /\*SÃO PAULO ✈️ RIO DE JANEIRO\*/.test(msg) && /⭕ \*R\$ 214,53\* só ida/.test(msg) && /Ida em 04\/03\/2027/.test(msg)
+  && /8\.000 milhas/.test(msg) && !/pontos/.test(msg) && /R\$ 480/.test(msg) && /Mais 3 trechos/.test(msg) && msg.includes(A.SITE), "campaign message like the example (R$, milhas, comparison, links):\n" + msg.split("\n").slice(0, 9).join(" / "));
+const dm = A.dealMessage({ url: "https://md/palmas", title: "Jalapão!", to: "PMW", from: "GRU", miles: 11000, airline: "LA" });
+assert(/EMISSÃO NACIONAL/.test(dm) && /SÃO PAULO ✈️ PALMAS/.test(dm) && /Cia: \*LATAM\*/.test(dm) && /11\.000 milhas\* Latam Pass o trecho/.test(dm), "miles deal message: " + dm.split("\n").slice(0, 6).join(" / "));
+assert(/PROMOÇÃO INTERNACIONAL/.test(A.dealMessage({ url: "u", title: "t", to: "LIS", price: 3599, roundTrip: true })) && /R\$ 3\.599\* ida e volta/.test(A.dealMessage({ url: "u", title: "t", to: "LIS", price: 3599, roundTrip: true })), "international cash deal message");
+// horário da campanha (Brasília): 19h dentro, 12h fora
+const data = { campaigns: [camp], cash: [{ source: "md", url: "https://md/sc", title: "SC", to: "FLN", price: 278, roundTrip: true }, { source: "azul", to: "GIG", price: 214 }], miles: [{ url: "https://md/palmas", title: "J", to: "PMW", miles: 11000 }, { url: "https://md/sc", to: "FLN", miles: 5000 }] };
+assert(A.pendingAlerts(data, new Date("2026-11-02T22:00:00Z")).map(a => a.key).join() === "camp:Anoiteceu Azul:2026-11-02,md:https://md/palmas,md:https://md/sc", "pending alerts: live campaign + feed deals, no duplicates");
+assert(!A.pendingAlerts(data, new Date("2026-11-02T15:00:00Z")).some(a => a.campaign), "campaign outside its hours is not alerted");
+// rodadas: 1ª confirma e manda só a campanha ao vivo; 2ª nada; nova promoção -> 1 mensagem
+const sentMsgs = [];
+const cmb = async u => { const q = new URL(u).searchParams; sentMsgs.push(q.get("text")); return { ok: true, status: 200, text: async () => "Message queued. You will receive it in a few seconds." }; };
+let saved = {};
+const store = { get: async () => ({ ...saved }), put: async o => { saved = { ...o }; } };
+const envA = { WHATSAPP_PHONE: "+5541999990000", CALLMEBOT_APIKEY: "123456" };
+const deps = { offers: async () => data, lookup: async () => 480, fetchImpl: cmb };
+let ra = await A.runAlerts(envA, store, deps, new Date("2026-11-02T22:00:00Z"));
+assert(ra.sent === 2 && /Alertas do Radar de Passagens ativados/.test(sentMsgs[0]) && /3 promoções/.test(sentMsgs[0]) && /ANOITECEU AZUL/.test(sentMsgs[1]) && Object.keys(saved).length === 3, "first run: confirmation + live campaign, existing deals marked as seen: " + JSON.stringify(ra));
+ra = await A.runAlerts(envA, store, deps, new Date("2026-11-02T22:10:00Z"));
+assert(ra.sent === 0 && sentMsgs.length === 2, "nothing repeated on the next run");
+data.cash.push({ source: "md", url: "https://md/new", title: "Novidade", to: "SSA", from: "GRU", price: 399, roundTrip: true, airline: "G3" });
+ra = await A.runAlerts(envA, store, deps, new Date("2026-11-02T22:20:00Z"));
+assert(ra.sent === 1 && /SÃO PAULO ✈️ SALVADOR/.test(sentMsgs[2]) && /Cia: \*GOL\*/.test(sentMsgs[2]) && /R\$ 399\* ida e volta/.test(sentMsgs[2]), "new deal sent once: " + sentMsgs[2].split("\n").slice(0, 6).join(" / "));
+ra = await A.runAlerts(envA, store, deps, new Date("2026-11-03T22:00:00Z"));
+assert(ra.sent === 1 && /ANOITECEU AZUL/.test(sentMsgs[3]), "campaign alerted again the next night");
+const failSend = async () => ({ ok: true, status: 200, text: async () => "APIKey is invalid" });
+saved = {}; ra = await A.runAlerts(envA, store, { ...deps, fetchImpl: failSend }, new Date("2026-11-02T22:00:00Z"));
+assert(ra.sent === 0 && /APIKey is invalid/.test(ra.errors[0]) && !Object.keys(saved).length, "send failure reported, nothing marked as sent");
+assert((await A.runAlerts({}, store, deps)).sent === 0, "no secrets: nothing sent");
+const offM = await offers(env, async u => ({ ok: true, status: 200, text: async () => u.includes("milhas/feed")
+  ? '<rss><item><title>Jalapão! Voos diretos da Latam para Palmas a partir de 11 mil milhas o trecho</title><link>https://md/palmas</link><pubDate></pubDate><description></description></item></rss>'
+  : u.includes("feed") ? "<rss></rss>" : "<html></html>", json: async () => ({ success: true, data: [] }) }));
+assert(offM.miles.length === 1 && offM.miles[0].miles === 11000 && offM.miles[0].to === "PMW", "offers include miles deals from the miles feed");
 if (failed) { console.log(failed + " falha(s)"); process.exit(1); }

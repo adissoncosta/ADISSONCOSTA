@@ -7,3 +7,17 @@ compatibility_date = "2026-10-01"
 [vars]
 # Sites que podem chamar o servidor (separados por vírgula). "*" libera todos.
 ALLOWED_ORIGINS = "https://adissoncosta.github.io"
+
+# Alertas no WhatsApp: verifica as promoções a cada 10 minutos (server/alertas.js).
+# Segredos: WHATSAPP_PHONE e CALLMEBOT_APIKEY (sem eles, nada é enviado).
+[triggers]
+crons = ["*/10 * * * *"]
+
+# Guarda o que já foi avisado, para não repetir (Durable Object com SQLite, incluso no plano gratuito)
+[[durable_objects.bindings]]
+name = "ALERTAS"
+class_name = "Alertas"
+
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["Alertas"]

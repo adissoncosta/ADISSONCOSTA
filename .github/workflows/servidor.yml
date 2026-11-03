@@ -1,6 +1,7 @@
 # Publica o servidor de preços (server/worker.js) no Cloudflare Workers.
 # Precisa de 3 segredos do repositório (Settings → Secrets and variables → Actions):
 #   TRAVELPAYOUTS_TOKEN, CLOUDFLARE_API_TOKEN e CLOUDFLARE_ACCOUNT_ID.
+# Opcionais, para os alertas de promoção no WhatsApp: WHATSAPP_PHONE e CALLMEBOT_APIKEY.
 # Sem eles, só roda os testes do servidor e avisa o que falta.
 name: Servidor de preços
 
@@ -31,7 +32,11 @@ jobs:
           TP: ${{ secrets.TRAVELPAYOUTS_TOKEN }}
           CF: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           ACC: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          WA: ${{ secrets.WHATSAPP_PHONE }}
+          CMB: ${{ secrets.CALLMEBOT_APIKEY }}
         run: |
+          if [ -n "$WA" ] && [ -n "$CMB" ]; then echo "wa=true" >> "$GITHUB_OUTPUT"
+          else echo "::notice::Alertas no WhatsApp desligados: crie os segredos WHATSAPP_PHONE e CALLMEBOT_APIKEY (veja o README)."; fi
           faltam=""
           [ -z "$TP" ] && faltam="$faltam TRAVELPAYOUTS_TOKEN"
           [ -z "$CF" ] && faltam="$faltam CLOUDFLARE_API_TOKEN"
@@ -54,6 +59,20 @@ jobs:
             TRAVELPAYOUTS_TOKEN
         env:
           TRAVELPAYOUTS_TOKEN: ${{ secrets.TRAVELPAYOUTS_TOKEN }}
+      - name: Alertas no WhatsApp (segredos)
+        if: steps.segredos.outputs.ok == 'true' && steps.segredos.outputs.wa == 'true'
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          workingDirectory: server
+          command: deployments list
+          secrets: |
+            WHATSAPP_PHONE
+            CALLMEBOT_APIKEY
+        env:
+          WHATSAPP_PHONE: ${{ secrets.WHATSAPP_PHONE }}
+          CALLMEBOT_APIKEY: ${{ secrets.CALLMEBOT_APIKEY }}
       - name: Testar o servidor publicado
         if: steps.segredos.outputs.ok == 'true'
         env:

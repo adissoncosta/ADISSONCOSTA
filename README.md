@@ -38,6 +38,19 @@ Os preços vêm de buscas recentes feitas por viajantes: podem estar algumas hor
 
 O servidor só aceita chamadas do site (`ALLOWED_ORIGINS` em `server/wrangler.toml`).
 
+## Alertas no WhatsApp
+
+A cada 10 minutos o servidor confere as promoções (campanhas da Azul ao vivo e as novas promoções em reais e em milhas do Melhores Destinos) e manda cada novidade uma vez só para o seu WhatsApp, pelo [CallMeBot](https://www.callmebot.com/blog/free-api-whatsapp-messages/) (gratuito, só para o seu próprio número).
+
+1. Salve nos contatos o número do CallMeBot indicado na página acima e mande para ele, pelo WhatsApp, a mensagem `I allow callmebot to send me messages`.
+2. Ele responde com a sua chave (apikey).
+3. No GitHub, em Settings → Secrets and variables → Actions → New repository secret, crie:
+   - `WHATSAPP_PHONE`: seu número com DDI e DDD, ex. `+5541999998888`
+   - `CALLMEBOT_APIKEY`: a chave recebida
+4. Rode de novo o workflow "Servidor de preços" (Actions → Servidor de preços → Run workflow).
+
+Em até 10 minutos chega a mensagem "Alertas do Radar de Passagens ativados!". O código está em `server/alertas.js`.
+
 ## Testar
 
 Os testes rodam no GitHub Actions nos três motores de navegador a cada push (workflow `Testes`):

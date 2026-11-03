@@ -9,6 +9,9 @@
 // Configuração: variável secreta TRAVELPAYOUTS_TOKEN. Opcional: ALLOWED_ORIGINS (lista separada
 // por vírgula; padrão "*").
 
+import { runAlerts, doStore, Alertas } from "./alertas.js";
+export { Alertas };
+
 const API = "https://api.travelpayouts.com/aviasales/v3/prices_for_dates";
 const CACHE_SECONDS = 1800;
 const PRICES_VERSION = 5;  // aumente ao mudar a busca de preços: o cache antigo deixa de valer
@@ -128,7 +131,7 @@ export async function months(env, p, now = new Date(), fetchImpl = fetch) {
 const UA = "Mozilla/5.0 (compatible; RadarDePassagens/1.0; +https://adissoncosta.github.io/ADISSONCOSTA/)";
 export const AZUL_PAGES = ["anoiteceu"];
 const OFFERS_SECONDS = 600;
-const OFFERS_VERSION = 3;  // aumente ao mudar o formato ou a leitura das ofertas
+const OFFERS_VERSION = 4;  // aumente ao mudar o formato ou a leitura das ofertas
 // Nome da cidade (como aparece nos títulos) -> aeroporto principal
 const CITY_CODE = {
   "são paulo": "GRU", "rio de janeiro": "GIG", "rio": "GIG", "brasília": "BSB", "belo horizonte": "CNF", "salvador": "SSA", "recife": "REC",
@@ -177,9 +180,14 @@ export function parseAzul(html, url) {
 export function parseMdItem(it) {
   const title = it.title, low = title.toLowerCase();
   const pm = title.match(/a partir de R\$ ?([\d.]+)(?:,(\d{2}))?/i);
-  if (!pm) return null;
-  const price = +pm[1].replace(/\./g, "") + (pm[2] ? +pm[2] / 100 : 0);
-  const after = low.slice(Math.max(0, low.search(/\bpara\b|passagens|voos/)));
+  // promoção de passagem com milhas: "a partir de 11 mil milhas o trecho", "3.000 pontos", "9 mil pontos Azul"
+  const mm = title.match(/(\d{1,3}(?:\.\d{3})+|\d+(?:,\d)?\s*mil)\s+(?:milhas|pontos)/i);
+  const milesTrip = mm && /trecho|passage|voos?\b|resgate|emiss/i.test(title) && !/bônus|transfer|milheiro|cartão|conta /i.test(title);
+  if (!pm && !milesTrip) return null;
+  const price = pm ? +pm[1].replace(/\./g, "") + (pm[2] ? +pm[2] / 100 : 0) : 0;
+  const miles = milesTrip ? (/mil$/i.test(mm[1].trim()) ? Math.round(parseFloat(mm[1].replace(",", ".")) * 1000) : +mm[1].replace(/\./g, "")) : 0;
+  const pi = low.search(/\bpara\b/);
+  const after = low.slice(Math.max(0, pi >= 0 ? pi : low.search(/passagens|voos/)));
   const cityIn = (text) => {
     let best = null;
     for (const [name, code] of Object.entries(CITY_CODE)) {
@@ -192,7 +200,7 @@ export function parseMdItem(it) {
   if (!dest) return null;
   const from = cityIn(((it.description || "").toLowerCase().match(/saindo de ([^,.;]+)/) || [, ""])[1]);
   const airlines = AIRLINE_WORDS.filter(([w]) => new RegExp(`(^|[^a-zà-ú])${w}([^a-zà-ú]|$)`).test(low)).map(([, c]) => c);
-  return { title, link: it.link, pub: it.pub, price, roundTrip: /ida e volta/i.test(title), to: dest.code, from: from && from.code !== dest.code ? from.code : "",
+  return { title, link: it.link, pub: it.pub, price, miles, roundTrip: /ida e volta/i.test(title), to: dest.code, from: from && from.code !== dest.code ? from.code : "",
     airline: airlines.length === 1 ? airlines[0] : "" };
 }
 export function parseRss(xml) {
@@ -209,6 +217,7 @@ export async function offers(env, fetchImpl = fetch, now = new Date()) {
     Promise.all(AZUL_PAGES.map(p => { const url = `https://passagens.voeazul.com.br/pt/${p}`; return get(url).then(h => parseAzul(h, url)).catch(e => { errors.push(e.message); return null; }); })),
     get("https://www.melhoresdestinos.com.br/feed").then(parseRss).catch(e => { errors.push(e.message); return []; }),
   ]);
+  const mdMiles = await get("https://www.melhoresdestinos.com.br/milhas/feed").then(parseRss).catch(e => { errors.push(e.message); return []; });
   const cash = [], campaigns = [];
   // Azul: os mais baratos, um por destino, para variar as fotos
   for (const page of azul.filter(Boolean)) {
@@ -225,7 +234,10 @@ export async function offers(env, fetchImpl = fetch, now = new Date()) {
     }
   }
   // Melhores Destinos: promoções dos últimos 3 dias com preço e destino; companhia mais barata pelo Aviasales
-  const recent = md.map(parseMdItem).filter(d => d && (!d.pub || now - Date.parse(d.pub) < 3 * 864e5)).slice(0, 6);
+  const recent = md.map(parseMdItem).filter(d => d && d.price > 0 && (!d.pub || now - Date.parse(d.pub) < 3 * 864e5)).slice(0, 6);
+  // promoções em milhas (passagens, não cartões ou bônus)
+  const miles = mdMiles.map(parseMdItem).filter(d => d && d.miles > 0 && (!d.pub || now - Date.parse(d.pub) < 3 * 864e5)).slice(0, 6)
+    .map(d => ({ source: "md", title: d.title, url: d.link, pub: d.pub, from: d.from, to: d.to, miles: d.miles, price: d.price, airline: d.airline }));
   const monthsAhead = [1, 2, 3].map(i => new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + i, 1)).toISOString().slice(0, 7));
   await Promise.all(recent.map(async d => {
     // companhia mais barata do trecho nos próximos meses (para mostrar uma só, a do menor preço)
@@ -238,7 +250,7 @@ export async function offers(env, fetchImpl = fetch, now = new Date()) {
     }
     cash.push({ source: "md", title: d.title, url: d.link, pub: d.pub, from: d.from, to: d.to, price: d.price, roundTrip: d.roundTrip, airline: d.airline });
   }));
-  return { at: now.toISOString(), campaigns, cash, errors };
+  return { at: now.toISOString(), campaigns, cash, miles, errors };
 }
 
 export function parse(url) {
@@ -256,7 +268,20 @@ export function parse(url) {
   return { mode: "prices", from, to, dep, ret };
 }
 
+// Menor preço do trecho no mês da viagem (só ida), para comparar com a campanha nos alertas
+const usualLookup = env => async f => {
+  const rows = await tp(env, { origin: f.from, destination: f.to, departure_at: f.dep.slice(0, 7), one_way: "true", limit: "30" });
+  const p = rows.filter(r => r.price > 0).map(r => r.price).sort((a, b) => a - b)[0];
+  return p || 0;
+};
+
 export default {
+  // agendamento (wrangler.toml, [triggers]): avisa no WhatsApp as promoções novas
+  async scheduled(event, env, ctx) {
+    if (!env.WHATSAPP_PHONE || !env.CALLMEBOT_APIKEY || !env.ALERTAS) return;
+    ctx.waitUntil(runAlerts(env, doStore(env.ALERTAS), { offers: () => offers(env), lookup: env.TRAVELPAYOUTS_TOKEN ? usualLookup(env) : null })
+      .then(r => console.log("alertas", JSON.stringify(r))).catch(e => console.log("alertas erro", e.message)));
+  },
   async fetch(req, env, ctx) {
     const h = cors(env, req);
     if (req.method === "OPTIONS") return new Response(null, { status: 204, headers: { ...h, "Access-Control-Max-Age": "86400" } });
