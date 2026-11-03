@@ -1,0 +1,23 @@
+# Emissor de NFS-e pelo WhatsApp (Cloudflare Worker). Publicar: npx wrangler deploy (nesta pasta)
+# Segredos (npx wrangler secret put NOME): FOCUS_TOKEN, GREENAPI_INSTANCE, GREENAPI_TOKEN, GREENAPI_URL,
+#   WEBHOOK_TOKEN e PRESTADORES (JSON com as empresas; veja nfse/README.md)
+name = "emissor-nfse"
+main = "worker.js"
+compatibility_date = "2026-10-01"
+
+[vars]
+# "homologacao" (testes, notas sem valor fiscal) ou "producao"
+FOCUS_AMBIENTE = "homologacao"
+
+# Consulta a cada minuto as notas que ainda esperam a prefeitura (caso o gatilho da Focus falhe)
+[triggers]
+crons = ["* * * * *"]
+
+# Conversas, notas e numeração da DPS (Durable Object com SQLite, incluso no plano gratuito)
+[[durable_objects.bindings]]
+name = "EMISSOR"
+class_name = "Emissor"
+
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["Emissor"]

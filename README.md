@@ -11,6 +11,10 @@ Página única (HTML/CSS/JS, sem dependências) para achar passagens aéreas pro
 
 - **Celular, tablet e computador** – a página se ajusta sozinha à largura da tela (de 320px a monitores grandes): no celular, carrosséis de deslizar com o dedo e alvos de toque de 44px; no computador, mais largura, mais cartões por vez e setas ‹ › nos carrosséis. Dá para instalar como app ("Adicionar à tela inicial" no celular, "Instalar" no Chrome/Edge do computador).
 
+## Emissor de NFS-e pelo WhatsApp
+
+Na pasta `nfse/` fica um emissor de nota fiscal de serviço. O pedido chega pelo WhatsApp, a nota é emitida pela Focus NFe no padrão nacional e o PDF volta pelo WhatsApp. Veja [nfse/README.md](nfse/README.md).
+
 ## Rodar
 
 Abra `index.html` no navegador.

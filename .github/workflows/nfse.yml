@@ -1,0 +1,82 @@
+# Publica o Emissor de NFS-e pelo WhatsApp (nfse/) no Cloudflare Workers.
+# Segredos do repositório (Settings → Secrets and variables → Actions), veja nfse/README.md:
+#   CLOUDFLARE_API_TOKEN, CLOUDFLARE_ACCOUNT_ID, FOCUS_TOKEN, GREENAPI_INSTANCE, GREENAPI_TOKEN,
+#   GREENAPI_URL, NFSE_WEBHOOK_TOKEN e NFSE_PRESTADORES (JSON com as empresas)
+# Sem eles, só roda os testes e avisa o que falta.
+name: Emissor de NFS-e
+
+on:
+  push:
+    branches: [claude/ticket-sales-promo-app-zplsze, main]
+    paths: ["nfse/**", "tests/nfse.test.mjs", ".github/workflows/nfse.yml"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  publicar:
+    name: Testar e publicar
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Testes do emissor
+        run: node tests/nfse.test.mjs
+      - name: Conferir segredos
+        id: segredos
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          FOCUS_TOKEN: ${{ secrets.FOCUS_TOKEN }}
+          GREENAPI_INSTANCE: ${{ secrets.GREENAPI_INSTANCE }}
+          GREENAPI_TOKEN: ${{ secrets.GREENAPI_TOKEN }}
+          GREENAPI_URL: ${{ secrets.GREENAPI_URL }}
+          WEBHOOK_TOKEN: ${{ secrets.NFSE_WEBHOOK_TOKEN }}
+          PRESTADORES: ${{ secrets.NFSE_PRESTADORES }}
+        run: |
+          node -e '
+            const obrig = ["CLOUDFLARE_API_TOKEN","CLOUDFLARE_ACCOUNT_ID","FOCUS_TOKEN","GREENAPI_INSTANCE","GREENAPI_TOKEN","WEBHOOK_TOKEN","PRESTADORES"];
+            const faltam = obrig.filter(n => !process.env[n]);
+            const fs = require("fs");
+            if (process.env.PRESTADORES) { try { JSON.parse(process.env.PRESTADORES); } catch { faltam.push("NFSE_PRESTADORES (JSON inválido)"); } }
+            if (faltam.length) {
+              console.log("::warning::Emissor não publicado. Faltam os segredos: " + faltam.join(", ") + " (veja nfse/README.md).");
+              fs.appendFileSync(process.env.GITHUB_OUTPUT, "ok=false\n");
+            } else {
+              const nomes = ["FOCUS_TOKEN","GREENAPI_INSTANCE","GREENAPI_TOKEN","GREENAPI_URL","WEBHOOK_TOKEN","PRESTADORES"];
+              fs.writeFileSync(process.env.RUNNER_TEMP + "/nfse.json", JSON.stringify(Object.fromEntries(nomes.filter(n => process.env[n]).map(n => [n, process.env[n].trim()]))));
+              fs.appendFileSync(process.env.GITHUB_OUTPUT, "ok=true\n");
+            }'
+      - name: Publicar no Cloudflare
+        id: deploy
+        if: steps.segredos.outputs.ok == 'true'
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          workingDirectory: nfse
+      - name: Enviar segredos ao servidor
+        if: steps.segredos.outputs.ok == 'true'
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          workingDirectory: nfse
+          command: secret bulk ${{ runner.temp }}/nfse.json
+      - name: Conferir o emissor publicado
+        if: steps.segredos.outputs.ok == 'true'
+        env:
+          URL: ${{ steps.deploy.outputs.deployment-url }}
+        run: |
+          curl -fsS "$URL/" | tee /tmp/r.json; echo
+          {
+            echo "### Emissor de NFS-e publicado"
+            echo "Endereço: \`$URL\`"
+            echo
+            echo "- Webhook da Green API: \`$URL/whatsapp\` (token do webhook = NFSE_WEBHOOK_TOKEN)"
+            echo "- Gatilho da Focus NFe: rode uma vez \`curl -X POST -H \"Authorization: Bearer SEU_TOKEN\" $URL/configurar\`"
+          } >> "$GITHUB_STEP_SUMMARY"

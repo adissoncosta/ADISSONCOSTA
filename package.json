@@ -3,7 +3,8 @@
   "private": true,
   "description": "Radar de Passagens: página única para achar passagens aéreas promocionais saindo do Brasil",
   "scripts": {
-    "test": "node tests/smoke.js && node tests/worker.test.mjs",
+    "test": "node tests/smoke.js && node tests/worker.test.mjs && node tests/nfse.test.mjs",
+    "test:nfse": "node tests/nfse.test.mjs",
     "test:server": "node tests/worker.test.mjs",
     "test:chromium": "BROWSER=chromium node tests/smoke.js",
     "test:firefox": "BROWSER=firefox node tests/smoke.js",
